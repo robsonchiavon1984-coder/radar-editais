@@ -279,6 +279,24 @@ textarea.in{width:100%;min-height:64px;resize:vertical}
 .day .it span.pgi{background:color-mix(in srgb,var(--acc) 9%,var(--glass));border-color:color-mix(in srgb,var(--acc) 30%,transparent)}
 .day .it span.pgi b{color:var(--acc);font-size:10px;letter-spacing:.4px;margin-right:2px}
 @media(max-width:600px){.day{grid-template-columns:24px 1fr}.day .it{grid-column:1/-1}}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:22px 14px;margin:6px 0 4px;border:2px dashed color-mix(in srgb,var(--acc) 45%,transparent);border-radius:14px;background:color-mix(in srgb,var(--acc) 5%,var(--glass2));cursor:pointer;text-align:center}
+.drop.on{background:color-mix(in srgb,var(--acc) 14%,var(--glass2));border-color:var(--acc)}
+.stage{margin:8px 0 12px}
+.mman{margin:10px 0}.mman>summary{cursor:pointer;color:var(--acc);font-weight:600}
+tr.moff td{opacity:.5}
+.pedit{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;padding:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));gap:10px}
+.pe-bar{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.pe-h,.pe-a,.pe-c{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pe-c label{display:flex;gap:4px;align-items:center;font-size:12px;padding:4px 8px;border-radius:9px;border:1px solid var(--stroke2);background:var(--glass2)}
+.pe-f{display:grid;grid-template-columns:2fr 2fr 1fr 1fr 1fr 1fr;gap:8px}
+.pe-f label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink3)}
+.pe-f>*{min-width:0}.pe-f .in{width:100%;min-width:0;box-sizing:border-box}
+@media(max-width:900px){.pe-f{grid-template-columns:1fr 1fr}.pe-bar{max-height:52vh;overflow:auto}}
+.pe-pv{flex:1;overflow:auto;border-radius:14px;background:#cbd5e1;padding:16px}
+.pe-page{background:#fff;color:#111827;width:277mm;max-width:none;margin:0 auto;padding:10mm;box-shadow:0 4px 20px rgba(0,0,0,.18)}
+.pe-page.ret{width:190mm}
+#prprev{outline:none}#prprev:focus{box-shadow:0 0 0 2px #93c5fd}
+
 </style>
 <div class="bgfx"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <header class="top glass">
@@ -1064,7 +1082,7 @@ function sched(eid,cIn){
     o.eds.add(e.id);if(e.data&&(!o.due||e.data<o.due))o.due=e.data;o.sc[dk]=(o.sc[dk]||0)+((p&&p.length)||1)+(ex&&ex.length?.5:0)})));
   // disciplina "de origem" da norma: onde ela aparece em mais pontos (a CF fica em Constitucional, o CP em Penal); empate → a sua ordem
   Object.values(L).forEach(o=>{o.dk=Object.keys(o.sc).sort((a,b)=>(o.sc[b]-o.sc[a])||(dIx(a)-dIx(b)))[0]});
-  const M={};mats().forEach((m,i)=>{const me=matEds(m,eds);if(!me.length||matPages(m)<=0)return;const dues=me.map(id=>edById[id]&&edById[id].data).filter(Boolean).sort();M[m.id]={t:'p',m,due:dues[0]||null,dk:m.disc,nat:i,eds:new Set(me)}});
+  const M={};(c.pdf===false?[]:mats()).forEach((m,i)=>{if(m.off)return;const me=matEds(m,eds);if(!me.length||matPages(m)<=0)return;const dues=me.map(id=>edById[id]&&edById[id].data).filter(Boolean).sort();M[m.id]={t:'p',m,due:dues[0]||null,dk:m.disc,nat:i,eds:new Set(me)}});
   const o=c.ordem;const dk=x=>x.due||'9999';const sz=x=>x.t==='a'?x.lab.length:matPages(x.m);
   const cmp=(a,b)=>o==='tamanho'?(sz(a)-sz(b))||(a.nat-b.nat)
     :o==='disc'?(dIx(a.dk)-dIx(b.dk))||(a.nat-b.nat)
@@ -1126,14 +1144,14 @@ function cntTxt(a,p){return [a?fmtN(a)+' art.':'',p?fmtN(p)+' pág.':''].filter(
 function rCrono(){
   RS={};const cm=LS.get('cmode','ed');
   let h=`<h2 class="sec">Cronograma de leitura</h2><div class="toolbar"><div class="seg"><button data-cm="ed" class="${cm==='ed'?'on':''}">Por edital</button><button data-cm="all" class="${cm==='all'?'on':''}">Todos os editais juntos</button></div>
-   <span style="margin-left:auto"></span><button class="btn" id="crPrint">⎙ Imprimir / PDF</button><button class="btn" id="crDl">Baixar para imprimir (.html)</button></div><div class="small muted" id="crMsg"></div>`;
+   <span style="margin-left:auto"></span><button class="btn pri" id="crPrint">⎙ Imprimir / PDF…</button><button class="btn" id="crDl" hidden></button></div><div class="small muted" id="crMsg"></div>`;
   $('#v-crono').innerHTML=h+'<div id="crb"></div>';
   $$('#v-crono [data-cm]').forEach(b=>b.onclick=()=>{LS.set('cmode',b.dataset.cm);rCrono()});
   const eid=cm==='all'?null:st.ed;
   if(eid&&!edById[eid]){$('#crb').innerHTML='<div class="empty">Escolha um edital.</div>';return}
   const pr=()=>{const P=sched(eid);return [prSched(P,eid),eid?'Radar - Cronograma '+edById[eid].sigla:'Radar - Cronograma de todos os editais']};
-  $('#crPrint').onclick=()=>{const [hh,t]=pr();$('#crMsg').textContent='Abrindo a impressão…';setTimeout(()=>{if(!doPrint(hh,t))$('#crMsg').textContent='A impressão foi bloqueada aqui. Use "Baixar para imprimir".';else $('#crMsg').textContent='Se a janela de impressão não abrir, use "Baixar para imprimir": abra o arquivo baixado e ele imprime em A4 paisagem.'},50)};
-  $('#crDl').onclick=async()=>{const [hh,t]=pr();try{await saveFile(t.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w\- ]+/g,'').replace(/\s+/g,'-')+'.html',standaloneHTML(hh,t),'text/html;charset=utf-8');$('#crMsg').textContent='Arquivo gerado. Abra-o no navegador para imprimir ou salvar em PDF.'}catch(err){$('#crMsg').textContent='Download não concluído.'}};
+  $('#crPrint').onclick=()=>openPrintEditor(eid);
+  $('#crDl').onclick=()=>openPrintEditor(eid);
   rCronoBody(eid);
 }
 function rCronoBody(eid){
@@ -1145,6 +1163,7 @@ function rCronoBody(eid){
    ${single?'':`<label style="grid-column:1/-1">Editais incluídos<div class="wk">${ED.filter(x=>x.data).map(x=>`<label><input type="checkbox" data-ce="${x.id}" ${(c.eds||[]).includes(x.id)?'checked':''}><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${x.cor}"></span>${esc(x.sigla)}</label>`).join('')}</div></label>`}
    <label>Início do plano<input type="date" id="ci" value="${c.ini}"></label><label>Fim${single&&e.data?' (véspera: '+fmtD(addDays(e.data,-1))+')':''}<input type="date" id="cf" value="${c.fim}"></label>
    <label>Ordem<select id="co">${ordOpts.map(([v,t])=>`<option value="${v}" ${c.ordem===v?'selected':''}>${esc(t)}</option>`).join('')}</select></label>
+   <label>PDFs e materiais<select id="cpdf"><option value="1" ${c.pdf!==false?'selected':''}>Incluir no cronograma</option><option value="0" ${c.pdf===false?'selected':''}>Cronograma só de lei seca (sem PDFs)</option></select></label>
    <label>Normas<select id="cm"><option value="1" ${c.imp?'selected':''}>Expressas e implícitas</option><option value="0" ${!c.imp?'selected':''}>Só expressas</option></select></label>
    <label>${single?'Dias finais só de revisão':'Dias de revisão antes de cada prova'}<input type="number" min="0" max="60" id="cr" value="${c.rev||0}"></label>
    <label style="grid-column:1/-1">Dias de estudo<div class="wk">${WDN.map((n,i)=>`<label><input type="checkbox" data-wd="${i}" ${c.wd[i]?'checked':''}>${n}</label>`).join('')}</div></label></div>
@@ -1158,15 +1177,18 @@ function rCronoBody(eid){
   // materiais
   const ms=mats();
   h+=`<details class="glass panel crdet" id="matBox" ${LS.get('matOpen',0)?'open':''}><summary><b>Meus PDFs e materiais</b> <span class="muted small">${ms.length?ms.length+' cadastrado(s) · '+fmtN(ms.reduce((s,m)=>s+matPages(m),0))+' páginas':'nenhum cadastrado'}</span></summary>
-   <div class="muted small" style="margin:8px 0">Cadastre apostilas, livros e PDFs que não estão no Radar. Informe as páginas a ler: o cronograma calcula quantas páginas por dia, junto com os artigos de lei, na ordem e nos prazos escolhidos.</div>
+   <div class="muted small" style="margin:8px 0">Solte aqui os seus PDFs (vários de uma vez): o Radar conta as páginas de cada um, sugere a disciplina pelo nome do arquivo e distribui as páginas pelos dias, junto com os artigos de lei. Os arquivos não são enviados nem guardados: só o nome e o número de páginas.</div>
+   <label class="drop" id="mDrop"><input type="file" id="mFiles" accept="application/pdf,.pdf" multiple hidden><b>Arraste os PDFs para cá</b><span class="muted small">ou clique para escolher no computador, tablet ou celular</span></label>
+   <div id="mStage">${stageHTML()}</div>
+   <details class="mman"><summary class="small">Cadastrar manualmente (sem o arquivo, informando as páginas)</summary>
    <div class="fgrid matf"><label>Nome do material<input class="in" id="mNome" placeholder="Ex.: Apostila de Direito Penal"></label>
     <label>Disciplina<select class="in" id="mDisc">${discList(ED).map(k=>`<option>${esc(k)}</option>`).join('')}<option value="__nova">Outra (digitar)…</option></select></label>
     <label id="mNovaL" hidden>Nome da disciplina<input class="in" id="mNova"></label>
     <label>Da página<input class="in" type="number" min="1" id="mPi" value="1"></label><label>Até a página<input class="in" type="number" min="1" id="mPf" placeholder="Ex.: 1215"></label>
     <label style="grid-column:1/-1">Editais que este material atende <span class="muted">(sem marcar nenhum: os editais que cobram a disciplina)</span><div class="wk">${ED.map(x=>`<label><input type="checkbox" data-me="${x.id}">${esc(x.sigla)}</label>`).join('')}</div></label></div>
-   <div class="toolbar"><button class="btn pri" id="mAdd">Adicionar ao cronograma</button><button class="btn" id="mCancel" hidden>Cancelar edição</button><span class="small muted" id="mMsg"></span></div>
-   ${ms.length?`<div class="tbl"><table class="mtab"><thead><tr><th>Material</th><th>Disciplina</th><th class="num">Páginas</th><th>Lidas</th><th>Editais</th><th></th></tr></thead><tbody>${ms.map(m=>{const t=matPages(m),r=matRead(m),pc=t?Math.floor(r*100/t):0;const me=m.eds&&m.eds.length?m.eds:matEds(m,ED);
-     return `<tr><td><b>${esc(m.nome)}</b></td><td>${esc(m.disc)}</td><td class="num">${m.pi}–${m.pf}<div class="muted small">${fmtN(t)} pág.</div></td><td style="min-width:150px">${fmtN(r)} de ${fmtN(t)} (${pc}%)${pbar(pc)}<div class="small" style="margin-top:4px;display:flex;gap:4px;align-items:center">Li até a p. <input class="in sm" type="number" data-mupto="${m.id}" min="${m.pi}" max="${m.pf}" style="width:80px"><button class="btn sm" data-mok="${m.id}">OK</button></div></td><td>${me.filter(id=>edById[id]).map(id=>`<span class="tag" style="border-color:${edById[id].cor}">${esc(edById[id].sigla)}</span>`).join(' ')||'<span class="muted small">todos</span>'}${m.eds&&m.eds.length?'':'<div class="muted small">automático</div>'}</td><td style="white-space:nowrap"><button class="btn sm" data-medit="${m.id}">Editar</button> <button class="btn sm dan" data-mdel="${m.id}">Excluir</button></td></tr>`}).join('')}</tbody></table></div>`:''}</details>`;
+   <div class="toolbar"><button class="btn pri" id="mAdd">Adicionar ao cronograma</button><button class="btn" id="mCancel" hidden>Cancelar edição</button><span class="small muted" id="mMsg"></span></div></details>
+   ${ms.length?`<div class="tbl"><table class="mtab"><thead><tr><th title="Incluir no cronograma">No plano</th><th>Material</th><th>Disciplina</th><th class="num">Páginas</th><th>Lidas</th><th>Editais</th><th></th></tr></thead><tbody>${ms.map(m=>{const t=matPages(m),r=matRead(m),pc=t?Math.floor(r*100/t):0;const me=m.eds&&m.eds.length?m.eds:matEds(m,ED);
+     return `<tr class="${m.off?'moff':''}"><td><input type="checkbox" data-mon="${m.id}" ${m.off?'':'checked'} title="Incluir este material no cronograma"></td><td><b>${esc(m.nome)}</b></td><td>${esc(m.disc)}</td><td class="num">${m.pi}–${m.pf}<div class="muted small">${fmtN(t)} pág.</div></td><td style="min-width:150px">${fmtN(r)} de ${fmtN(t)} (${pc}%)${pbar(pc)}<div class="small" style="margin-top:4px;display:flex;gap:4px;align-items:center">Li até a p. <input class="in sm" type="number" data-mupto="${m.id}" min="${m.pi}" max="${m.pf}" style="width:80px"><button class="btn sm" data-mok="${m.id}">OK</button></div></td><td>${me.filter(id=>edById[id]).map(id=>`<span class="tag" style="border-color:${edById[id].cor}">${esc(edById[id].sigla)}</span>`).join(' ')||'<span class="muted small">todos</span>'}${m.eds&&m.eds.length?'':'<div class="muted small">automático</div>'}</td><td style="white-space:nowrap"><button class="btn sm" data-medit="${m.id}">Editar</button> <button class="btn sm dan" data-mdel="${m.id}">Excluir</button></td></tr>`}).join('')}</tbody></table></div>`:''}</details>`;
   // resumo
   const sd=P.study.length;
   h+=`<div class="toolbar" style="margin-top:12px"><div>Falta ler no plano: <b>${fmtN(P.ua)}</b> artigos${P.up?` e <b>${fmtN(P.up)}</b> páginas de PDF`:''} · <b>${sd}</b> dias de leitura · média ≈ <b>${Math.ceil(P.perA)}</b> art./dia${P.up?` e <b>${Math.ceil(P.perP)}</b> pág./dia`:''}${P.maxA&&!single?` · pico ${fmtN(P.maxA)} art.`:''}</div><button class="btn" id="goToday" style="margin-left:auto">Ir para hoje</button><button class="btn" id="ics">Copiar cronograma</button></div>
@@ -1186,10 +1208,10 @@ function rCronoBody(eid){
     return `<div class="day ${x.dt===tdy?'today':''} ${done?'done':''} ${isLate?'late':''}" id="d-${x.dt}"><input type="checkbox" data-dt="${x.dt}" ${done?'checked':''} ${s.tot?'':'disabled'}><div><div class="dt">${fmtD(x.dt)}</div><div class="muted small">${WDN[dd.getDay()]} · ${cntTxt(x.n,x.np)}</div>${isLate?'<div class="lt">atrasado</div>':''}${s.rd&&!done?`<div class="muted small">lido em parte: ${s.rd}/${s.tot}</div>`:''}</div><div class="it">${x.items.length||x.pages.length?dayItemsHTML(x.items,single?null:P.useBy)+dayPagesHTML(x.pages,single?null:P.matBy)+precChip(x.items,x.dt):'<span class="muted">folga ou concluído</span>'}</div></div>`}).join('')||'<div class="empty">Sem dias no período.</div>'}</div>`;
   $('#crb').innerHTML=h;
   // eventos: configuração
-  const save=(iniEdited)=>{const n={...c,ini:c.ini,fim:$('#cf').value,ordem:$('#co').value,imp:$('#cm').value==='1',rev:+$('#cr').value||0,wd:$$('#crb [data-wd]').map(x=>x.checked?1:0)};
+  const save=(iniEdited)=>{const n={...c,ini:c.ini,fim:$('#cf').value,ordem:$('#co').value,imp:$('#cm').value==='1',pdf:$('#cpdf').value==='1',rev:+$('#cr').value||0,wd:$$('#crb [data-wd]').map(x=>x.checked?1:0)};
     if(!single)n.eds=$$('#crb [data-ce]').filter(x=>x.checked).map(x=>x.dataset.ce);
     KV.set(cfgKey(eid),n);const ini=iniEdited?$('#ci').value:(c.ini>tdy?c.ini:null);replan(eid,ini);rCrono()};
-  $('#ci').onchange=()=>save(true);['#cf','#co','#cm','#cr'].forEach(s=>$(s).onchange=()=>save(false));$$('#crb [data-wd],#crb [data-ce]').forEach(x=>x.onchange=()=>save(false));
+  $('#ci').onchange=()=>save(true);['#cf','#co','#cm','#cr','#cpdf'].forEach(s=>$(s).onchange=()=>save(false));$$('#crb [data-wd],#crb [data-ce]').forEach(x=>x.onchange=()=>save(false));
   // ordem das disciplinas
   $('#dordBox').ontoggle=ev=>LS.set('dordOpen',ev.target.open?1:0);$('#matBox').ontoggle=ev=>LS.set('matOpen',ev.target.open?1:0);
   const setOrd=a=>{KV.set('dord',a);if(ORD_USES_DISC(c.ordem))replan(eid,c.ini>tdy?c.ini:null);rCrono()};
@@ -1207,7 +1229,9 @@ function rCronoBody(eid){
     const eds=$$('#crb [data-me]').filter(x=>x.checked).map(x=>x.dataset.me);const a=mats();
     if(editing){const m=a.find(x=>x.id===editing);Object.assign(m,{nome,disc,pi,pf,eds})}else a.push({id:uid('m'),nome,disc,pi,pf,eds,cri:iso(today())});
     KV.set('mats',a);replanAll();if(!KV.get(cfgKey(eid),null))cfgGet(eid);LS.set('matOpen',1);rCrono()};
-  $$('#crb [data-medit]').forEach(b=>b.onclick=()=>{fillForm(matById(b.dataset.medit));$('#mNome').focus()});
+  $$('#crb [data-medit]').forEach(b=>b.onclick=()=>{fillForm(matById(b.dataset.medit));const dm=$('#crb .mman');if(dm)dm.open=true;$('#mNome').focus()});
+  $$('#crb [data-mon]').forEach(x=>x.onchange=()=>{const a=mats();const m=a.find(z=>z.id===x.dataset.mon);if(!m)return;m.off=!x.checked;KV.set('mats',a);replanAll();rCrono()});
+  bindStage(eid);
   $$('#crb [data-mdel]').forEach(b=>b.onclick=()=>{if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){b.dataset.armed='';b.textContent='Excluir'}},4000);return}
     const id=b.dataset.mdel;KV.set('mats',mats().filter(m=>m.id!==id));const pgm=mpg();delete pgm[id];KV.set('mpg',pgm);replanAll();rCrono()});
   $$('#crb [data-mok]').forEach(b=>b.onclick=()=>{const m=matById(b.dataset.mok);const inp=$(`#crb [data-mupto="${m.id}"]`);const v=parseInt(inp.value,10);if(!v)return;const pgm=mpg();pgm[m.id]=rgAdd(rgDel(pgm[m.id],m.pi,m.pf),m.pi,Math.min(m.pf,Math.max(m.pi,v)));if(v<m.pi)delete pgm[m.id];KV.set('mpg',pgm);rCrono()});
@@ -1221,21 +1245,98 @@ function rCronoBody(eid){
   bindLei($('#crb'));bindPrecDays($('#crb'));
 }
 
+/* ---- PDFs soltos: contagem de páginas no próprio navegador ---- */
+let STAGE=[];// [{id,nome,disc,pf,eds:[],st:'lendo'|'ok'|'aprox'|'erro',inc:true}]
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfjsP=null;
+function loadScript(src){return new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>ko(new Error('falha ao carregar '+src));document.head.appendChild(s)})}
+function loadPdfJs(){if(window.pdfjsLib&&window.pdfjsWorker)return Promise.resolve(window.pdfjsLib);
+  // o "worker" é carregado como script comum: o pdf.js então trabalha na própria página (o visualizador não permite workers de outro domínio)
+  if(!pdfjsP)pdfjsP=loadScript(PDFJS+'pdf.min.js').then(()=>loadScript(PDFJS+'pdf.worker.min.js')).then(()=>window.pdfjsLib).catch(e=>{pdfjsP=null;throw e});
+  return pdfjsP}
+function rawPageCount(buf){// plano B, sem biblioteca: conta os objetos /Type /Page ou usa o maior /Count
+  const s=new TextDecoder('latin1').decode(new Uint8Array(buf));const n=(s.match(/\/Type\s*\/Page(?![s\w])/g)||[]).length;if(n)return {n,ex:true};
+  let mx=0;s.replace(/\/Count\s+(\d+)/g,(_,x)=>{mx=Math.max(mx,+x)});return {n:mx,ex:false}}
+async function countPages(file){const buf=await file.arrayBuffer();
+  try{const lib=await loadPdfJs();const doc=await lib.getDocument({data:new Uint8Array(buf.slice(0)),isEvalSupported:false,disableFontFace:true}).promise;const n=doc.numPages;try{doc.destroy()}catch(e){}return {n,ex:true}}
+  catch(e){const r=rawPageCount(buf);if(!r.n)throw e;return r}}
+const DISC_HINTS=[[/process(o|ual)?[\s_-]*penal|\bcpp\b/,'processual penal'],[/process(o|ual)?[\s_-]*civil|\bcpc\b/,'processual civil'],[/execu[cç][aã]o[\s_-]*penal|\blep\b/,'penal'],[/penal|crim/,'direito penal'],[/consumidor|\bcdc\b/,'consumidor'],[/crian[cç]a|adolescen|\beca\b/,'crianca'],[/constitucional|\bcf\b|controle de constitucionalidade/,'constitucional'],[/administrativ|licita/,'administrativo'],[/financeiro e tribut/,'financeiro e tribut'],[/tribut|\bctn\b/,'tribut'],[/financeiro|or[cç]ament/,'financeiro'],[/empresarial|comercial|societ|fal[eê]ncia/,'empresarial'],[/eleitoral/,'eleitoral'],[/ambiental/,'ambiental'],[/previdenci/,'previdenci'],[/humanos/,'direitos humanos'],[/internacional/,'internacional'],[/econ[oô]mico/,'economico'],[/portugu|gram[aá]tica|reda[cç][aã]o/,'portuguesa'],[/human[ií]stic|filosof|sociolog|psicolog|[eé]tica/,'nocoes gerais'],[/civil|\bcc\b|fam[ií]lia|sucess|contrato|obriga/,'direito civil']];
+function guessDisc(name){const n=norm(name).replace(/[_\.]+/g,' ');const ds=discList(ED);
+  for(const [re,key] of DISC_HINTS){if(re.test(n)){const k=norm(key);const hit=ds.find(d=>norm(d).includes(k));if(hit)return hit}}return ''}
+function discOpts(sel){return `<option value="" ${sel?'':'selected'}>Geral (todas as provas)</option>`+discList(ED).map(k=>`<option ${k===sel?'selected':''}>${esc(k)}</option>`).join('')}
+function stageHTML(){if(!STAGE.length)return '';const ready=STAGE.filter(s=>s.inc&&s.pf>0).length;
+  return `<div class="stage"><div class="small" style="margin:8px 0 6px"><b>${STAGE.length} PDF(s) recebido(s)</b> — confira o nome, a disciplina e as páginas antes de adicionar.</div><div class="tbl"><table><thead><tr><th></th><th>Material</th><th>Disciplina</th><th class="num">Páginas</th><th></th></tr></thead><tbody>${STAGE.map(s=>`<tr><td><input type="checkbox" data-sinc="${s.id}" ${s.inc?'checked':''}></td><td><input class="in" data-snome="${s.id}" value="${esc(s.nome)}" style="width:100%;min-width:160px"></td><td><select class="in" data-sdisc="${s.id}">${discOpts(s.disc)}</select></td><td class="num"><input class="in sm" type="number" min="1" data-spf="${s.id}" value="${s.pf||''}" style="width:84px">${s.st==='lendo'?'<div class="muted small">contando…</div>':s.st==='aprox'?'<div class="small" style="color:var(--warn)">aproximado, confira</div>':s.st==='erro'?'<div class="small" style="color:var(--red)">não li o arquivo, digite</div>':''}</td><td><button class="x" data-sdel="${s.id}" title="Retirar">✕</button></td></tr>`).join('')}</tbody></table></div>
+   <div class="toolbar" style="margin-top:8px"><button class="btn pri" id="sAdd" ${ready?'':'disabled'}>Adicionar ${ready} ao cronograma</button><button class="btn" id="sClear">Descartar a lista</button><span class="muted small">Sem disciplina escolhida, o PDF vale para todas as provas. Os editais podem ser ajustados depois em "Editar".</span></div></div>`}
+function redrawStage(eid){const el=$('#mStage');if(!el)return;el.innerHTML=stageHTML();bindStage(eid)}
+async function addFiles(files,eid){const fs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf');if(!fs.length)return;
+  const novos=fs.map(f=>({id:uid('s'),f,nome:f.name.replace(/\.pdf$/i,'').replace(/[_]+/g,' ').trim(),disc:guessDisc(f.name),pf:0,st:'lendo',inc:true}));STAGE=STAGE.concat(novos);redrawStage(eid);
+  for(const s of novos){try{const r=await countPages(s.f);s.pf=r.n;s.st=r.ex?'ok':'aprox'}catch(e){s.st='erro'}delete s.f;redrawStage(eid)}}
+function bindStage(eid){const dz=$('#mDrop'),fi=$('#mFiles');
+  if(dz&&!dz.dataset.b){dz.dataset.b=1;['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('on')}));['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('on')}));
+    dz.addEventListener('drop',e=>addFiles(e.dataTransfer.files,eid));fi.onchange=()=>{addFiles(fi.files,eid);fi.value=''}}
+  const S=id=>STAGE.find(s=>s.id===id);
+  $$('#mStage [data-sinc]').forEach(x=>x.onchange=()=>{S(x.dataset.sinc).inc=x.checked;redrawStage(eid)});
+  $$('#mStage [data-snome]').forEach(x=>x.oninput=()=>{S(x.dataset.snome).nome=x.value});
+  $$('#mStage [data-sdisc]').forEach(x=>x.onchange=()=>{S(x.dataset.sdisc).disc=x.value});
+  $$('#mStage [data-spf]').forEach(x=>x.onchange=()=>{const s=S(x.dataset.spf);s.pf=parseInt(x.value,10)||0;if(s.st!=='lendo')s.st='ok';redrawStage(eid)});
+  $$('#mStage [data-sdel]').forEach(b=>b.onclick=()=>{STAGE=STAGE.filter(s=>s.id!==b.dataset.sdel);redrawStage(eid)});
+  if($('#sClear'))$('#sClear').onclick=()=>{STAGE=[];redrawStage(eid)};
+  if($('#sAdd'))$('#sAdd').onclick=()=>{const a=mats();STAGE.filter(s=>s.inc&&s.pf>0).forEach(s=>a.push({id:uid('m'),nome:s.nome||'PDF',disc:s.disc||'Geral',pi:1,pf:s.pf,eds:[],cri:iso(today())}));
+    STAGE=STAGE.filter(s=>!(s.inc&&s.pf>0));KV.set('mats',a);replanAll();if(!KV.get(cfgKey(eid),null))cfgGet(eid);LS.set('matOpen',1);rCrono()}}
+
+/* ---- editor de impressão: escolher o que sai, ver e editar antes de imprimir ---- */
+const PR_DEF={title:'',note:'',de:'',ate:'',ck:true,lei:true,pdf:true,num:true,tags:true,exams:true,rev:true,pend:false,late:true,orient:'paisagem',fs:9};
+function prOpt(){return Object.assign({},PR_DEF,LS.get('prOpt',{})||{})}
+function prExtraCss(o){return `@page{size:A4 ${o.orient==='retrato'?'portrait':'landscape'};margin:11mm 12mm}#printroot{font-size:${o.fs+1}pt}#printroot table{font-size:${o.fs}pt}`}
+function openPrintEditor(eid){const P=sched(eid);const o=prOpt();
+  const defT=eid?`Cronograma de leitura — ${edById[eid].sigla}`:`Cronograma de leitura — todos os editais (${P.eds.map(e=>e.sigla).join(', ')})`;
+  let ov=$('#pedit');if(ov)ov.remove();ov=document.createElement('div');ov.id='pedit';ov.className='pedit';document.body.appendChild(ov);
+  const cb=(k,l)=>`<label><input type="checkbox" data-po="${k}" ${o[k]?'checked':''}> ${l}</label>`;
+  ov.innerHTML=`<div class="pe-bar glass"><div class="pe-h"><b style="font-family:Fraunces,Georgia,serif;font-size:19px">Editar antes de imprimir</b><span class="muted small">Ajuste as opções; depois, se quiser, clique na prévia e edite o texto diretamente.</span><button class="btn" id="peClose" style="margin-left:auto">Fechar</button></div>
+   <div class="pe-f"><label>Título<input class="in" id="peT" value="${esc(o.title||defT)}"></label><label>Observação no topo<input class="in" id="peN" value="${esc(o.note)}" placeholder="Ex.: meta da semana, horários"></label>
+    <label>De<input class="in" type="date" id="peDe" value="${o.de||P.c.ini}"></label><label>Até<input class="in" type="date" id="peAte" value="${o.ate||P.days.map(x=>x.dt).pop()||P.c.fim}"></label>
+    <label>Papel<select class="in" id="peOr"><option value="paisagem" ${o.orient!=='retrato'?'selected':''}>A4 paisagem</option><option value="retrato" ${o.orient==='retrato'?'selected':''}>A4 retrato</option></select></label>
+    <label>Letra da tabela<select class="in" id="peFs">${[7,8,9,10,11,12].map(n=>`<option ${o.fs===n?'selected':''}>${n}</option>`).join('')}</select></label></div>
+   <div class="pe-c"><span class="muted small">Colunas:</span>${cb('ck','quadradinho ✓')}${cb('lei','lei seca')}${cb('pdf','PDFs')}${cb('num','quantidades')}${cb('tags','siglas dos editais')}<span class="muted small" style="margin-left:8px">Linhas:</span>${cb('exams','provas')}${cb('rev','revisão')}${cb('late','destacar atrasados')}${cb('pend','só dias ainda não lidos')}</div>
+   <div class="pe-a"><button class="btn sm" id="peReset">Restaurar padrão</button><span id="peDirty" class="small" style="color:var(--warn)"></span><span style="margin-left:auto"></span><button class="btn pri" id="pePrint">⎙ Imprimir / salvar PDF</button><button class="btn" id="peDl">Baixar para imprimir (.html)</button></div><div class="small muted" id="peMsg"></div></div>
+   <div class="pe-pv"><div class="pe-page ${o.orient==='retrato'?'ret':''}"><div id="prprev" contenteditable="true" spellcheck="false"></div></div></div>`;
+  let style=$('#prprevcss');if(!style){style=document.createElement('style');style.id='prprevcss';document.head.appendChild(style)}
+  const read=()=>{const n={title:$('#peT',ov).value,note:$('#peN',ov).value,de:$('#peDe',ov).value,ate:$('#peAte',ov).value,orient:$('#peOr',ov).value,fs:+$('#peFs',ov).value};$$('[data-po]',ov).forEach(x=>n[x.dataset.po]=x.checked);return n};
+  let dirty=false;
+  const draw=()=>{const n=read();const save=Object.assign({},n);if(save.title===defT)save.title='';LS.set('prOpt',save);
+    style.textContent=(PR_CSS+prExtraCss(n)).replace(/@page\{[^}]*\}/g,'').split('#printroot').join('#prprev');
+    $('#prprev',ov).innerHTML=prSched(P,eid,n);$('.pe-page',ov).classList.toggle('ret',n.orient==='retrato');dirty=false;$('#peDirty',ov).textContent=''};
+  draw();
+  $$('input,select',$('.pe-bar',ov)).forEach(x=>{x.addEventListener(x.type==='text'?'input':'change',()=>{if(dirty)$('#peMsg',ov).textContent='As edições feitas à mão na prévia foram refeitas a partir das opções.';draw()})});
+  $('#prprev',ov).addEventListener('input',()=>{dirty=true;$('#peDirty',ov).textContent='prévia editada à mão'});
+  $('#peReset',ov).onclick=()=>{LS.set('prOpt',{});openPrintEditor(eid)};
+  $('#peClose',ov).onclick=()=>ov.remove();
+  const out=()=>{const n=read();return [$('#prprev',ov).innerHTML,n.title||defT,prExtraCss(n)]};
+  $('#pePrint',ov).onclick=()=>{const [h,t,x]=out();$('#peMsg',ov).textContent='Abrindo a impressão…';setTimeout(()=>{if(!doPrint(h,t,x))$('#peMsg',ov).textContent='A impressão foi bloqueada aqui. Use "Baixar para imprimir".';else $('#peMsg',ov).textContent='Se a janela de impressão não abrir (o visualizador do Claude costuma bloquear), use "Baixar para imprimir".'},50)};
+  $('#peDl',ov).onclick=async()=>{const [h,t,x]=out();try{await saveFile(t.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w\- ]+/g,'').replace(/\s+/g,'-').slice(0,80)+'.html',standaloneHTML(h,t,x),'text/html;charset=utf-8');$('#peMsg',ov).textContent='Arquivo gerado: abra-o no navegador e ele abre a impressão já com as suas edições.'}catch(err){$('#peMsg',ov).textContent='Download não concluído.'}};
+}
+
 /* ---- impressão do cronograma ---- */
-function prSched(P,eid){RS={};const pg=mpg();const tdy=iso(today());const dn=KV.get(eid?'done_'+eid:'done_all',{})||{};
-  const title=eid?`Cronograma de leitura — ${edById[eid].sigla}`:`Cronograma de leitura — todos os editais (${P.eds.map(e=>e.sigla).join(', ')})`;
+function prSched(P,eid,o){o=Object.assign({},PR_DEF,o||{});RS={};const pg=mpg();const tdy=iso(today());const dn=KV.get(eid?'done_'+eid:'done_all',{})||{};
+  const title=o.title||(eid?`Cronograma de leitura — ${edById[eid].sigla}`:`Cronograma de leitura — todos os editais (${P.eds.map(e=>e.sigla).join(', ')})`);
+  const de=o.de||P.c.ini,ate=o.ate||'9999';
   const ordLbl={edital:'ordem do edital',tamanho:'menores primeiro',disc:'minha ordem de disciplinas',prazo:'pela data das provas',prazo_disc:'pela data das provas e pela minha ordem de disciplinas',uniforme:'carga uniforme'}[P.c.ordem]||P.c.ordem;
-  let h=prHead(title,`De ${fmtD(P.c.ini)} a ${fmtD(P.c.fim)} · ${P.study.length} dias de leitura · ${fmtN(P.ua)} artigos${P.up?' e '+fmtN(P.up)+' páginas de PDF':''} · média ${Math.ceil(P.perA)} art./dia${P.up?' e '+Math.ceil(P.perP)+' pág./dia':''} · ordem: ${ordLbl}`);
-  if(!eid)h+=`<div style="font-size:9pt;margin-bottom:4px"><b>Provas:</b> ${P.eds.map(e=>esc(e.sigla)+' em '+fmtD(e.data)).join(' · ')}</div>`;
-  if(ORD_USES_DISC(P.c.ordem))h+=`<div style="font-size:9pt;margin-bottom:4px"><b>Ordem das disciplinas:</b> ${discOrder().map((k,i)=>(i+1)+'. '+esc(k)).join(' · ')}</div>`;
-  const ms=Object.values(P.M);if(ms.length)h+=`<div style="font-size:9pt;margin-bottom:4px"><b>PDFs e materiais:</b> ${ms.map(x=>esc(x.m.nome)+' ('+esc(x.m.disc)+', p. '+x.m.pi+'–'+x.m.pf+')').join(' · ')}</div>`;
-  const sig=set=>!eid&&set?` <span class="muted">[${[...set].filter(id=>edById[id]).map(id=>edById[id].sigla).join(', ')}]</span>`:'';
-  h+=`<table><thead><tr><th style="width:22px">✓</th><th style="width:92px">Data</th><th>Lei seca</th><th style="width:30%">PDFs e materiais</th><th class="num" style="width:44px">Art.</th><th class="num" style="width:44px">Pág.</th></tr></thead><tbody>`;
-  P.days.forEach(x=>{const d=`${fmtD(x.dt)} <span class="muted">${WDN[parseISO(x.dt).getDay()]}</span>`;
-    if(x.exam){h+=`<tr class="ex"><td></td><td>${d}</td><td colspan="4"><b>PROVA ${esc(x.exam.sigla)}</b></td></tr>`;return}
-    if(x.rev){h+=`<tr><td>${prCk(dn[x.dt])}</td><td>${d}</td><td colspan="4"><b>Revisão${eid?' geral':' para '+esc(x.rev.sigla)}</b></td></tr>`;return}
-    const s=dayState(x,pg);const done=s.tot>0&&s.rd===s.tot;const late=x.dt<tdy&&!done&&s.tot>0;
-    h+=`<tr class="${late?'lt':''}"><td>${prCk(done)}</td><td>${d}${late?'<div style="font-size:7.5pt;font-weight:700">ATRASADO</div>':''}</td><td>${x.items.map(it=>esc((LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:''))+sig(P.useBy[it.k])).join('; ')||'<span class="muted">—</span>'}</td><td>${x.pages.map(p=>{const m=matById(p.m);return esc((m?m.nome:'PDF')+' p. '+p.a+(p.a!==p.b?'–'+p.b:''))+sig(P.matBy[p.m])}).join('; ')||'<span class="muted">—</span>'}</td><td class="num">${x.n||''}</td><td class="num">${x.np||''}</td></tr>`});
+  const showPdf=o.pdf&&Object.keys(P.M).length>0;
+  let h=prHead(title,`${fmtD(de)} a ${fmtD(ate==='9999'?P.c.fim:ate)} · média ${Math.ceil(P.perA)} art./dia${P.up&&showPdf?' e '+Math.ceil(P.perP)+' pág./dia':''} · ordem: ${ordLbl}`);
+  if(o.note)h+=`<div style="margin-bottom:6px;padding:4px 8px;border-left:3px solid #111827"><b>${esc(o.note)}</b></div>`;
+  if(!eid)h+=`<div style="margin-bottom:4px"><b>Provas:</b> ${P.eds.map(e=>esc(e.sigla)+' em '+fmtD(e.data)).join(' · ')}</div>`;
+  if(ORD_USES_DISC(P.c.ordem))h+=`<div style="margin-bottom:4px"><b>Ordem das disciplinas:</b> ${discOrder().map((k,i)=>(i+1)+'. '+esc(k)).join(' · ')}</div>`;
+  const ms=Object.values(P.M);if(showPdf&&ms.length)h+=`<div style="margin-bottom:4px"><b>PDFs e materiais:</b> ${ms.map(x=>esc(x.m.nome)+' ('+esc(x.m.disc)+', p. '+x.m.pi+'–'+x.m.pf+')').join(' · ')}</div>`;
+  const sig=set=>!eid&&o.tags&&set?` <span class="muted">[${[...set].filter(id=>edById[id]).map(id=>edById[id].sigla).join(', ')}]</span>`:'';
+  const ncol=(o.ck?1:0)+1+(o.lei?1:0)+(showPdf?1:0)+(o.num?(showPdf?2:1):0);const span=Math.max(1,ncol-(o.ck?1:0)-1);
+  h+=`<table><thead><tr>${o.ck?'<th style="width:22px">✓</th>':''}<th style="width:92px">Data</th>${o.lei?'<th>Lei seca</th>':''}${showPdf?`<th style="width:${o.lei?'30%':'auto'}">PDFs e materiais</th>`:''}${o.num?'<th class="num" style="width:44px">Art.</th>'+(showPdf?'<th class="num" style="width:44px">Pág.</th>':''):''}</tr></thead><tbody>`;
+  let rows=0;
+  P.days.forEach(x=>{if(x.dt<de||x.dt>ate)return;const d=`${fmtD(x.dt)} <span class="muted">${WDN[parseISO(x.dt).getDay()]}</span>`;const ck=v=>o.ck?`<td>${prCk(v)}</td>`:'';
+    if(x.exam){if(!o.exams)return;h+=`<tr class="ex">${o.ck?'<td></td>':''}<td>${d}</td><td colspan="${span}"><b>PROVA ${esc(x.exam.sigla)}</b></td></tr>`;rows++;return}
+    if(x.rev){if(!o.rev||(o.pend&&dn[x.dt]))return;h+=`<tr>${ck(dn[x.dt])}<td>${d}</td><td colspan="${span}"><b>Revisão${eid?' geral':' para '+esc(x.rev.sigla)}</b></td></tr>`;rows++;return}
+    const s=dayState(x,pg);const done=s.tot>0&&s.rd===s.tot;if(o.pend&&done)return;const late=o.late&&x.dt<tdy&&!done&&s.tot>0;
+    h+=`<tr class="${late?'lt':''}">${ck(done)}<td>${d}${late?'<div style="font-size:7.5pt;font-weight:700">ATRASADO</div>':''}</td>${o.lei?`<td>${x.items.map(it=>esc((LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:''))+sig(P.useBy[it.k])).join('; ')||'<span class="muted">—</span>'}</td>`:''}${showPdf?`<td>${x.pages.map(p=>{const m=matById(p.m);return esc((m?m.nome:'PDF')+' p. '+p.a+(p.a!==p.b?'–'+p.b:''))+sig(P.matBy[p.m])}).join('; ')||'<span class="muted">—</span>'}</td>`:''}${o.num?`<td class="num">${x.n||''}</td>`+(showPdf?`<td class="num">${x.np||''}</td>`:''):''}</tr>`;rows++});
+  if(!rows)h+=`<tr><td colspan="${ncol}" class="muted">Nenhum dia no período escolhido.</td></tr>`;
   return h+`</tbody></table>`}
 
 
@@ -1332,14 +1433,14 @@ function prInc(src){
   const data=D.inc[src]||[];let h=prHead('Assuntos mais cobrados — '+(src==='JUIZ'?'Juiz (todas as bancas)':src),'Temas e subtemas por número de questões');
   data.forEach(d=>{const tot=d.t.reduce((s,t)=>s+t.c,0);h+=`<h2>${esc(d.d)} <span class="muted" style="font-size:9pt">${tot} questões</span></h2><table><thead><tr><th>Tema</th><th class="num">Questões</th><th>Subtemas (questões)</th></tr></thead><tbody>${d.t.slice().sort((a,b)=>b.c-a.c).map(t=>`<tr><td>${esc(t.n)}</td><td class="num">${t.c} <span class="muted">${esc(t.p||'')}</span></td><td>${t.s.slice().sort((a,b)=>b.c-a.c).map(s=>esc(s.n)+' ('+s.c+')').join('; ')}</td></tr>`).join('')}</tbody></table>`});
   return h}
-function doPrint(html,title){
+function doPrint(html,title,extra){
   let root=document.getElementById('printroot');if(!root){root=document.createElement('div');root.id='printroot';document.body.appendChild(root)}
-  let stl=document.getElementById('printcss');if(!stl){stl=document.createElement('style');stl.id='printcss';stl.textContent=PR_CSS+`@media print{body>*:not(#printroot){display:none!important}#printroot{display:block!important}html,body{background:#fff!important}}@media screen{#printroot{display:none}}`;document.head.appendChild(stl)}
+  let stl=document.getElementById('printcss');if(!stl){stl=document.createElement('style');stl.id='printcss';document.head.appendChild(stl)}stl.textContent=PR_CSS+(extra||'')+`@media print{body>*:not(#printroot){display:none!important}#printroot{display:block!important}html,body{background:#fff!important}}@media screen{#printroot{display:none}}`;
   root.innerHTML=html;const old=document.title;document.title=title||old;
   const done=()=>{document.title=old;window.removeEventListener('afterprint',done)};window.addEventListener('afterprint',done);
   try{window.print()}catch(e){done();return false}
   return true}
-function standaloneHTML(html,title){return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet"><style>${PR_CSS}body{margin:0;background:#fff}@media screen{#printroot{max-width:277mm;margin:12px auto;padding:10mm;box-shadow:0 0 0 1px #e5e7eb}}</style></head><body><div id="printroot">${html}</div><script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`}
+function standaloneHTML(html,title,extra){return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet"><style>${PR_CSS}${extra||''}body{margin:0;background:#fff}@media screen{#printroot{max-width:277mm;margin:12px auto;padding:10mm;box-shadow:0 0 0 1px #e5e7eb}}</style></head><body><div id="printroot">${html}</div><script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`}
 function openExport(){
   const e=edById[st.ed];const di=e?curDisc(e):0;const d=e&&e.disc[di];const P=d&&precSet(d.d);
   const opts=[
@@ -1359,7 +1460,7 @@ function openExport(){
    <div class="toolbar" style="margin-top:10px"><button class="btn pri" id="exPrint">Imprimir / salvar PDF</button><button class="btn" id="exHtml">Baixar versão para impressão (.html)</button></div><div class="small muted" id="exMsg"></div>
    <div class="muted small" style="margin-top:8px">Se a janela de impressão não abrir (alguns visualizadores bloqueiam), use "Baixar versão para impressão": abra o arquivo baixado no navegador e ele abrirá a impressão em A4 paisagem.</div>`,el=>{
     const build=()=>{const k=$('input[name=exo]:checked',el).value;
-      const m={painel:()=>[prPainel(),'Radar - Painel'],edital:()=>[prEdital(e),'Radar - Edital '+e.sigla],disc:()=>[prEdital(e,di),'Radar - '+e.sigla+' - '+d.d],leis:()=>[prLeis(),'Radar - Normas'],leisEd:()=>[prLeis(e.id),'Radar - Normas '+e.sigla],prec:()=>[prPrec(e,d,P),'Radar - Precedentes '+P.disc+' '+e.sigla],alt:()=>[prAlt(e.id),'Radar - Alteracoes '+e.sigla],crono:()=>[prSched(sched(e.id),e.id),'Radar - Cronograma '+e.sigla],cronoAll:()=>[prSched(sched(null),null),'Radar - Cronograma de todos os editais'],inc:()=>[['FGV','FCC','JUIZ'].map(prInc).join('<div class="pb"></div>'),'Radar - Mais cobrados']};
+      const m={painel:()=>[prPainel(),'Radar - Painel'],edital:()=>[prEdital(e),'Radar - Edital '+e.sigla],disc:()=>[prEdital(e,di),'Radar - '+e.sigla+' - '+d.d],leis:()=>[prLeis(),'Radar - Normas'],leisEd:()=>[prLeis(e.id),'Radar - Normas '+e.sigla],prec:()=>[prPrec(e,d,P),'Radar - Precedentes '+P.disc+' '+e.sigla],alt:()=>[prAlt(e.id),'Radar - Alteracoes '+e.sigla],crono:()=>[prSched(sched(e.id),e.id,prOpt()),'Radar - Cronograma '+e.sigla],cronoAll:()=>[prSched(sched(null),null,prOpt()),'Radar - Cronograma de todos os editais'],inc:()=>[['FGV','FCC','JUIZ'].map(prInc).join('<div class="pb"></div>'),'Radar - Mais cobrados']};
       return m[k]()};
     $('#exPrint',el).onclick=()=>{const [h,t]=build();$('#exMsg',el).textContent='Abrindo a impressão…';setTimeout(()=>{if(!doPrint(h,t))$('#exMsg',el).textContent='A impressão foi bloqueada aqui. Use "Baixar versão para impressão".';else $('#exMsg',el).textContent=''},50)};
     $('#exHtml',el).onclick=async()=>{const [h,t]=build();try{await saveFile(t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\- ]+/g,'').replace(/\s+/g,'-').replace(/-+/g,'-')+'.html',standaloneHTML(h,t),'text/html;charset=utf-8');$('#exMsg',el).textContent='Arquivo gerado.'}catch(err){$('#exMsg',el).textContent='Download não concluído.'}};
