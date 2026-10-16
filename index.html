@@ -279,6 +279,22 @@ textarea.in{width:100%;min-height:64px;resize:vertical}
 .day .it span.pgi{background:color-mix(in srgb,var(--acc) 9%,var(--glass));border-color:color-mix(in srgb,var(--acc) 30%,transparent)}
 .day .it span.pgi b{color:var(--acc);font-size:10px;letter-spacing:.4px;margin-right:2px}
 @media(max-width:600px){.day{grid-template-columns:24px 1fr}.day .it{grid-column:1/-1}}
+.dord2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media(max-width:800px){.dord2{grid-template-columns:1fr}}
+.dcol{min-width:0}.dhd{margin-bottom:8px;font-size:13px}
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchip{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-radius:12px;border:1px solid var(--stroke2);background:var(--glass2);font-size:13px;font-weight:600}
+.dchip:hover{border-color:var(--acc);color:var(--acc)}
+.dinf{font-size:11px;font-weight:400;color:var(--ink3)}
+.dlist{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.dlist li{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:12px;border:1px solid var(--stroke2);background:var(--glass2);touch-action:none}
+.dlist li.drag{outline:2px solid var(--acc);box-shadow:0 8px 24px rgba(0,0,0,.18);position:relative;z-index:2}
+.dlist .dh{cursor:grab;font-size:18px;line-height:1;color:var(--ink3);padding:4px 6px;touch-action:none;user-select:none}
+.dlist .dn{font-weight:700;color:var(--acc);min-width:20px;text-align:right;font-variant-numeric:tabular-nums}
+.dlist .dt2{flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.3}
+.dempty{padding:18px;border:2px dashed var(--stroke2);border-radius:12px;text-align:center;color:var(--ink3);font-size:13px}
+.dact{margin-top:12px}
+.btn[disabled]{opacity:.45;cursor:default}
 .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:22px 14px;margin:6px 0 4px;border:2px dashed color-mix(in srgb,var(--acc) 45%,transparent);border-radius:14px;background:color-mix(in srgb,var(--acc) 5%,var(--glass2));cursor:pointer;text-align:center}
 .drop.on{background:color-mix(in srgb,var(--acc) 14%,var(--glass2));border-color:var(--acc)}
 .stage{margin:8px 0 12px}
@@ -1140,6 +1156,54 @@ function dayPagesHTML(pages,matBy){return (pages||[]).map(p=>{const m=matById(p.
 function itemsText(x){return [...(x.items||[]).map(it=>(LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:'')),...(x.pages||[]).map(p=>{const m=matById(p.m);return (m?m.nome:'PDF')+' p. '+p.a+(p.a!==p.b?'–'+p.b:'')})].join('; ')}
 function cntTxt(a,p){return [a?fmtN(a)+' art.':'',p?fmtN(p)+' pág.':''].filter(Boolean).join(' · ')||'—'}
 
+/* ---- ordem das disciplinas: montar a sequência tocando nas disciplinas e arrastando ---- */
+let DORD_DRAFT=null;// rascunho enquanto o usuário monta a ordem (só grava ao aplicar)
+function dordScope(P){const s=[];const add=k=>{if(k&&!s.includes(k))s.push(k)};
+  P.eds.forEach(e=>e.disc.forEach(d=>add(dkey(d.d))));Object.values(P.M).forEach(x=>add(x.m.disc));return s}
+function dordStats(P){const st={};const g=k=>st[k]=st[k]||{a:0,p:0,eds:new Set()};
+  Object.values(P.L).forEach(x=>{const o=g(x.dk);o.a+=x.lab.length;x.eds.forEach(id=>o.eds.add(id))});
+  Object.values(P.M).forEach(x=>{const o=g(x.m.disc);o.p+=matPages(x.m);x.eds.forEach(id=>o.eds.add(id))});
+  P.eds.forEach(e=>e.disc.forEach(d=>g(dkey(d.d)).eds.add(e.id)));return st}
+function dordHTML(P,c){const scope=dordScope(P);const saved=(KV.get('dord',null)||[]).filter(k=>scope.includes(k));
+  const placed=(DORD_DRAFT||saved).filter(k=>scope.includes(k));const rest=scope.filter(k=>!placed.includes(k));const st=dordStats(P);
+  const info=k=>{const o=st[k]||{a:0,p:0,eds:new Set()};return `<span class="dinf">${o.a?fmtN(o.a)+' art.':'sem lei seca'}${o.p?' · '+fmtN(o.p)+' pág.':''}</span>${dots(o.eds)}`};
+  const dirty=DORD_DRAFT&&JSON.stringify(DORD_DRAFT)!==JSON.stringify(saved);
+  const uses=ORD_USES_DISC(c.ordem);
+  return `<details class="glass panel crdet" id="dordBox" ${LS.get('dordOpen',0)||DORD_DRAFT?'open':''}><summary><b>Ordem das disciplinas</b> <span class="muted small">${saved.length?saved.length+' definida(s)':'ainda não definida'}${uses?' · em uso neste cronograma':' · não usada pela ordem atual'}</span></summary>
+   <div class="dord2">
+    <div class="dcol"><div class="dhd"><b>1. Toque nas disciplinas na sequência em que quer estudar</b></div>
+     <div class="dchips" id="dRest">${rest.map(k=>`<button class="dchip" data-dadd="${esc(k)}">${esc(k)} ${info(k)}</button>`).join('')||'<span class="muted small">Todas as disciplinas já têm posição.</span>'}</div>
+     ${rest.length?`<div class="toolbar" style="margin-top:8px"><button class="btn sm" id="dAll">Colocar todas as restantes no fim</button></div>`:''}</div>
+    <div class="dcol"><div class="dhd"><b>2. Sua ordem de estudo</b> <span class="muted small">arraste pela alça ⠿ para mudar a posição; ✕ devolve à lista</span></div>
+     <ol class="dlist" id="dList">${placed.map((k,i)=>`<li data-k="${esc(k)}"><span class="dh" title="Arrastar">⠿</span><span class="dn">${i+1}</span><span class="dt2">${esc(k)}<br>${info(k)}</span><button class="x" data-drm="${esc(k)}" title="Tirar da ordem">✕</button></li>`).join('')}</ol>
+     ${placed.length?'':'<div class="dempty">Nenhuma disciplina escolhida ainda. Toque nelas ao lado, na ordem desejada.</div>'}
+     ${rest.length&&placed.length?`<div class="muted small" style="margin-top:6px">As ${rest.length} disciplina(s) sem posição entram depois destas, na ordem padrão.</div>`:''}</div>
+   </div>
+   <div class="toolbar dact"><button class="btn pri" id="dApply" ${dirty||(!uses&&placed.length)?'':'disabled'}>${uses?'Aplicar ao cronograma':'Aplicar e usar esta ordem'}</button>${dirty?'<button class="btn" id="dUndo">Desfazer alterações</button><span class="small" style="color:var(--warn)">ordem ainda não aplicada</span>':''}<span style="margin-left:auto"></span><button class="btn sm" id="dClear" ${placed.length?'':'disabled'}>Recomeçar do zero</button></div>
+   ${uses?'':`<div class="muted small">Ao aplicar, a opção "Ordem" passa para "${P.single?'minha ordem de disciplinas':'data das provas e, dentro de cada prova, minha ordem'}".</div>`}
+   <div class="muted small" style="margin-top:4px">Cada lei entra na disciplina em que aparece em mais pontos do edital (a CF em Constitucional, o CP em Penal). A ordem vale para os dois modos (por edital e todos juntos).</div></details>`}
+function bindDord(eid,c,P){const box=$('#dordBox');if(!box)return;box.ontoggle=()=>LS.set('dordOpen',box.open?1:0);
+  const scope=dordScope(P);const cur=()=>(DORD_DRAFT||(KV.get('dord',null)||[])).filter(k=>scope.includes(k));
+  const keepOthers=a=>{const saved=KV.get('dord',null)||[];return a.concat(saved.filter(k=>!scope.includes(k)&&!a.includes(k)))};
+  const redraw=()=>{const y=box.getBoundingClientRect().top;box.outerHTML=dordHTML(P,c);bindDord(eid,c,P);const nb=$('#dordBox');window.scrollBy(0,nb.getBoundingClientRect().top-y)};
+  $$('[data-dadd]',box).forEach(b=>b.onclick=()=>{DORD_DRAFT=cur().concat([b.dataset.dadd]);redraw()});
+  $$('[data-drm]',box).forEach(b=>b.onclick=()=>{DORD_DRAFT=cur().filter(k=>k!==b.dataset.drm);redraw()});
+  if($('#dAll',box))$('#dAll',box).onclick=()=>{const a=cur();DORD_DRAFT=a.concat(scope.filter(k=>!a.includes(k)));redraw()};
+  $('#dClear',box).onclick=()=>{DORD_DRAFT=[];redraw()};
+  if($('#dUndo',box))$('#dUndo',box).onclick=()=>{DORD_DRAFT=null;redraw()};
+  $('#dApply',box).onclick=()=>{const a=keepOthers(cur());KV.set('dord',a);DORD_DRAFT=null;
+    if(!ORD_USES_DISC(c.ordem)){const n={...c,ordem:P.single?'disc':'prazo_disc'};KV.set(cfgKey(eid),n)}
+    replan(eid,c.ini>iso(today())?c.ini:null);LS.set('dordOpen',1);rCrono()};
+  // arrastar (mouse, toque e caneta)
+  const list=$('#dList',box);if(!list)return;
+  $$('.dh',list).forEach(h=>h.addEventListener('pointerdown',ev=>{ev.preventDefault();const li=h.closest('li');li.classList.add('drag');
+    const move=e=>{const items=[...list.children].filter(x=>x!==li);let before=null;for(const it of items){const r=it.getBoundingClientRect();if(e.clientY<r.top+r.height/2){before=it;break}}list.insertBefore(li,before);
+      [...list.children].forEach((x,i)=>{const n=x.querySelector('.dn');if(n)n.textContent=i+1});
+      const vh=window.innerHeight;if(e.clientY<60)window.scrollBy(0,-12);else if(e.clientY>vh-60)window.scrollBy(0,12)};
+    const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);li.classList.remove('drag');
+      const a=[...list.children].map(x=>x.dataset.k);if(JSON.stringify(a)!==JSON.stringify(cur())){DORD_DRAFT=a;redraw()}};
+    window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up)}))}
+
 /* ---- tela ---- */
 function rCrono(){
   RS={};const cm=LS.get('cmode','ed');
@@ -1169,11 +1233,7 @@ function rCronoBody(eid){
    <label style="grid-column:1/-1">Dias de estudo<div class="wk">${WDN.map((n,i)=>`<label><input type="checkbox" data-wd="${i}" ${c.wd[i]?'checked':''}>${n}</label>`).join('')}</div></label></div>
    <div class="muted small">A data de início fica gravada: o cronograma não recomeça sozinho a cada dia. Alterar a configuração refaz o plano a partir de hoje com o que ainda falta ler (o que você já leu é preservado).</div></div>`;
   // ordem das disciplinas
-  const dOrd=discOrder();
-  h+=`<details class="glass panel crdet" id="dordBox" ${LS.get('dordOpen',0)?'open':''}><summary><b>Ordem das disciplinas</b> <span class="muted small">${ORD_USES_DISC(c.ordem)?'em uso neste cronograma':'— para usar, escolha "minha ordem de disciplinas" em Ordem'}</span></summary>
-   <div class="muted small" style="margin:8px 0">Use as setas para definir a sequência em que quer estudar. Vale para os dois modos (por edital e todos juntos). Uma lei cobrada em várias disciplinas fica na disciplina em que aparece em mais pontos do edital (a CF em Constitucional, o CP em Penal).</div>
-   <ol class="dord">${dOrd.map((k,i)=>`<li><span class="dn">${i+1}</span><span class="dt2">${esc(k)}</span><button class="btn sm" data-dup="${i}" ${i===0?'disabled':''} title="Subir">↑</button><button class="btn sm" data-ddn="${i}" ${i===dOrd.length-1?'disabled':''} title="Descer">↓</button><button class="btn sm" data-dtop="${i}" ${i===0?'disabled':''} title="Mover para o início">Topo</button></li>`).join('')}</ol>
-   <div class="toolbar" style="margin-top:8px"><button class="btn sm" id="dordReset">Restaurar ordem padrão</button></div></details>`;
+  h+=dordHTML(P,c);
   // materiais
   const ms=mats();
   h+=`<details class="glass panel crdet" id="matBox" ${LS.get('matOpen',0)?'open':''}><summary><b>Meus PDFs e materiais</b> <span class="muted small">${ms.length?ms.length+' cadastrado(s) · '+fmtN(ms.reduce((s,m)=>s+matPages(m),0))+' páginas':'nenhum cadastrado'}</span></summary>
@@ -1214,11 +1274,7 @@ function rCronoBody(eid){
   $('#ci').onchange=()=>save(true);['#cf','#co','#cm','#cr','#cpdf'].forEach(s=>$(s).onchange=()=>save(false));$$('#crb [data-wd],#crb [data-ce]').forEach(x=>x.onchange=()=>save(false));
   // ordem das disciplinas
   $('#dordBox').ontoggle=ev=>LS.set('dordOpen',ev.target.open?1:0);$('#matBox').ontoggle=ev=>LS.set('matOpen',ev.target.open?1:0);
-  const setOrd=a=>{KV.set('dord',a);if(ORD_USES_DISC(c.ordem))replan(eid,c.ini>tdy?c.ini:null);rCrono()};
-  $$('#crb [data-dup]').forEach(b=>b.onclick=()=>{const a=discOrder(),i=+b.dataset.dup;[a[i-1],a[i]]=[a[i],a[i-1]];setOrd(a)});
-  $$('#crb [data-ddn]').forEach(b=>b.onclick=()=>{const a=discOrder(),i=+b.dataset.ddn;[a[i+1],a[i]]=[a[i],a[i+1]];setOrd(a)});
-  $$('#crb [data-dtop]').forEach(b=>b.onclick=()=>{const a=discOrder(),i=+b.dataset.dtop;const [x]=a.splice(i,1);a.unshift(x);setOrd(a)});
-  $('#dordReset').onclick=()=>{KV.del('dord');if(ORD_USES_DISC(c.ordem))replan(eid,c.ini>tdy?c.ini:null);rCrono()};
+  bindDord(eid,c,P);
   // materiais
   let editing=null;
   $('#mDisc').onchange=()=>{$('#mNovaL').hidden=$('#mDisc').value!=='__nova'};
