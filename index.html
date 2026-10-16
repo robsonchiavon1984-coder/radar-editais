@@ -257,6 +257,29 @@ textarea.in{width:100%;min-height:64px;resize:vertical}
 #prmain,.pc{overflow-wrap:anywhere}
 .warnbox{font-size:12px;color:#7c2d12;padding:10px 12px;border-radius:12px;background:#ffedd5;margin:10px 0}
 </style>
+<style>
+/* cronograma v2 */
+.crdet{margin-top:12px;padding:12px 16px}
+.crdet>summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.crdet>summary::-webkit-details-marker{display:none}
+.crdet>summary::before{content:'▸';color:var(--acc)}
+.crdet[open]>summary::before{content:'▾'}
+.dord{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.dord li{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:10px;border:1px solid var(--stroke2);background:var(--glass2)}
+.dord .dn{font-weight:700;color:var(--acc);min-width:22px;text-align:right;font-variant-numeric:tabular-nums}
+.dord .dt2{flex:1;min-width:0}
+.dord .btn[disabled]{opacity:.35;cursor:default}
+.matf .in{width:100%}
+.mtab td{font-size:13px}
+.latebox{margin:12px 0;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--red) 45%,transparent);background:color-mix(in srgb,var(--red) 10%,var(--glass2));color:var(--ink)}
+.latebox .lh b{color:var(--red)}
+.okbox{margin:12px 0;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--ok) 12%,var(--glass2));font-size:13px}
+.day.late{border-color:color-mix(in srgb,var(--red) 55%,transparent);background:color-mix(in srgb,var(--red) 7%,var(--glass2))}
+.day .lt{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.day .it span.pgi{background:color-mix(in srgb,var(--acc) 9%,var(--glass));border-color:color-mix(in srgb,var(--acc) 30%,transparent)}
+.day .it span.pgi b{color:var(--acc);font-size:10px;letter-spacing:.4px;margin-right:2px}
+@media(max-width:600px){.day{grid-template-columns:24px 1fr}.day .it{grid-column:1/-1}}
+</style>
 <div class="bgfx"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <header class="top glass">
   <div class="brand"><div class="logo"></div><span>Radar de Editais</span></div>
@@ -961,113 +984,260 @@ function openLei(k,tab){
 /* ================= CRONOGRAMA ================= */
 const WDN=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 function leiLabels(k){const l=LEIS[k];if(!l)return [];if(l.labels&&l.labels.length)return l.labels;const n=arts(k);return n?Array.from({length:n},(_,i)=>String(i+1)):[]}
-function cronoCfg(eid){const e=edById[eid];return KV.get('cfg_'+eid,null)||{ini:iso(today()),fim:e&&e.data?addDays(e.data,-1):iso(today()),wd:[1,1,1,1,1,1,1],imp:true,ordem:'edital',rev:0}}
-function lawSeq(eds,imp){const seen=new Set(),seq=[];eds.forEach(e=>e.disc.forEach(d=>d.leis.forEach(([k,p,ex])=>{if(seen.has(k))return;if(!imp&&!ex.length)return;const l=LEIS[k];if(!l||l.t==='RES')return;const lab=leiLabels(k);if(!lab.length)return;seen.add(k);seq.push({k,d:d.d,lab,due:e.data,e:e.id})})));return seq}
-function groupDay(units){const items=[];units.forEach(([k,a])=>{const last=items[items.length-1];if(last&&last.k===k){last.b=a;last.n++}else items.push({k,a,b:a,n:1})});return items}
-function buildPlan(eid){
-  const e=edById[eid],c=cronoCfg(eid);if(!e)return {plan:[],total:0,seq:[]};
-  const seq=lawSeq([e],c.imp);if(c.ordem==='tamanho')seq.sort((a,b)=>a.lab.length-b.lab.length);
-  const dias=[];let t=parseISO(c.ini);const f=parseISO(c.fim);while(t<=f){if(c.wd[t.getDay()])dias.push(iso(t));t=new Date(t.getTime()+864e5)}
-  const revDays=Math.min(c.rev||0,Math.max(0,dias.length-1));const studyDays=dias.slice(0,dias.length-revDays);
-  const units=[];seq.forEach(s=>s.lab.forEach(a=>units.push([s.k,a])));const total=units.length;
-  const plan=[];if(!studyDays.length)return {plan,total,seq,per:0};
-  const per=total/studyDays.length;
-  studyDays.forEach((dt,i)=>{const a=Math.round(per*i),b=Math.round(per*(i+1));plan.push({dt,items:groupDay(units.slice(a,b)),n:b-a})});
-  dias.slice(dias.length-revDays).forEach(dt=>plan.push({dt,items:[],n:0,rev:true}));
-  return {plan,total,seq,per};
-}
-function cfgAll(){const def=ED.filter(e=>e.data&&daysTo(e.data)>=0).map(e=>e.id);const last=ED.filter(e=>def.includes(e.id)).map(e=>e.data).sort().pop();
-  return KV.get('cfg_all',null)||{eds:def,ini:iso(today()),fim:last?addDays(last,-1):iso(today()),wd:[1,1,1,1,1,1,1],imp:true,ordem:'prazo',rev:2}}
-function buildAll(){
-  const c=cfgAll();const eds=c.eds.map(id=>edById[id]).filter(e=>e&&e.data).sort((a,b)=>a.data<b.data?-1:1);
-  const seq=lawSeq(eds,c.imp);
-  const useBy={};eds.forEach(e=>e.disc.forEach(d=>d.leis.forEach(([k,p,ex])=>{if(!c.imp&&!ex.length)return;(useBy[k]=useBy[k]||new Set()).add(e.id)})));
-  const exams=Object.fromEntries(eds.map(e=>[e.data,e]));
-  const revSet={};eds.forEach(e=>{let n=0,t=addDays(e.data,-1);while(n<(c.rev||0)&&t>=c.ini){if(c.wd[parseISO(t).getDay()]){revSet[t]=e;n++}t=addDays(t,-1)}});
-  const all=[];let t=c.ini;while(t<=c.fim){if(exams[t])all.push({dt:t,exam:exams[t]});else if(revSet[t])all.push({dt:t,rev:revSet[t]});else if(c.wd[parseISO(t).getDay()])all.push({dt:t,study:true});t=addDays(t,1)}
-  // exams after fim still shown
-  eds.forEach(e=>{if(e.data>c.fim&&!all.some(x=>x.dt===e.data))all.push({dt:e.data,exam:e})});
-  const study=all.filter(x=>x.study);
-  const units=[];seq.forEach(s=>s.lab.forEach(a=>units.push([s.k,a,s.due])));const total=units.length;
-  const warn=[];
-  if(!study.length)return {all,total,seq,useBy,eds,warn:['Não há dias de estudo no período escolhido.'],per:0};
-  const alloc=new Array(study.length).fill(0);
-  if(c.ordem==='uniforme'){const per=total/study.length;study.forEach((x,i)=>alloc[i]=Math.round(per*(i+1))-Math.round(per*i))}
-  else{ // equilibrado respeitando os prazos: menor carga diária máxima possível
-    const dl=eds.map(e=>({e,W:units.filter(u=>u[2]<=e.data).length,Dd:study.filter(x=>x.dt<e.data).length}));
-    let ti=0,w=0;
-    while(w<total&&ti<study.length){let best=null;
-      dl.forEach(x=>{if(x.W<=w)return;const days=x.Dd-ti;const rate=days>0?(x.W-w)/days:Infinity;if(!best||rate>=best.rate)best={x,rate,days}});
-      if(!best){const rest=total-w,days=study.length-ti;for(let i=0;i<days;i++)alloc[ti+i]+=Math.round(rest*(i+1)/days)-Math.round(rest*i/days);w=total;break}
-      if(best.days<=0){warn.push(`Sem dias de estudo antes da prova ${best.x.e.sigla}: ${fmtN(best.x.W-w)} artigos ficaram acumulados no dia seguinte disponível.`);alloc[ti]+=best.x.W-w;w=best.x.W;continue}
-      const need=best.x.W-w;for(let i=0;i<best.days;i++)alloc[ti+i]+=Math.round(need*(i+1)/best.days)-Math.round(need*i/best.days);ti+=best.days;w=best.x.W}
-    if(w<total){warn.push(`${fmtN(total-w)} artigos não couberam no período; foram somados ao último dia.`);alloc[alloc.length-1]+=total-w}
-    eds.forEach(e=>{const bd=study.filter(x=>x.dt<e.data).length;if(!bd)return})}
-  let p=0;study.forEach((x,i)=>{x.items=groupDay(units.slice(p,p+alloc[i]).map(u=>[u[0],u[1]]));x.n=alloc[i];p+=alloc[i]});
-  if(c.ordem==='uniforme'){eds.forEach(e=>{const due=units.findIndex(u=>u[2]===e.data);let cum=0,ok=true;study.forEach((x,i)=>{if(x.dt<e.data)cum+=x.n});const need=units.filter(u=>u[2]<=e.data).length;if(cum<need)warn.push(`Na divisão uniforme, ${fmtN(need-cum)} artigos das normas do ${e.sigla} ficam para depois da prova.`)})}
-  const maxDay=Math.max(...study.map(x=>x.n));
-  return {all,total,seq,useBy,eds,warn,per:total/study.length,maxDay};
-}
-function cronoProgress(eid){
-  if(LS.get('cmode','ed')==='all'){const c=cfgAll();if(c.eds.includes(eid)){const P=buildAll();const done=KV.get('done_all',{});let tot=0,dn=0;P.all.forEach(x=>{if(!x.study)return;x.items.forEach(it=>{if(!(P.useBy[it.k]||new Set()).has(eid))return;tot+=it.n;if(done[x.dt])dn+=it.n})});return tot?Math.round(dn/tot*100):0}}
-  const done=KV.get('done_'+eid,{});const p=buildPlan(eid);if(!p.total)return 0;let s=0;p.plan.forEach(d=>{if(done[d.dt])s+=d.n});return Math.round(s/p.total*100)}
+/* ================= CRONOGRAMA v2 =================
+   - a data de início fica gravada (não acompanha mais o dia de hoje);
+   - dias passados não concluídos aparecem como ATRASADOS;
+   - ordem das disciplinas definida pelo usuário;
+   - PDFs/materiais próprios com cálculo de páginas por dia;
+   - a marcação de um dia grava os artigos como lidos (aba Leis) e as páginas como lidas;
+   - "Replanejar a partir de hoje" redistribui o que falta ler. */
+const dkey=n=>String(n||'').replace(/^Conhecimentos Gerais\s*[—–-]\s*/,'').trim();
+function rgAdd(r,a,b){const o=[];(r||[]).concat([[a,b]]).sort((x,y)=>x[0]-y[0]).forEach(([x,y])=>{const l=o[o.length-1];if(l&&x<=l[1]+1)l[1]=Math.max(l[1],y);else o.push([x,y])});return o}
+function rgDel(r,a,b){const o=[];(r||[]).forEach(([x,y])=>{if(y<a||x>b){o.push([x,y]);return}if(x<a)o.push([x,a-1]);if(y>b)o.push([b+1,y])});return o}
+function rgHas(r,i){if(!r)return false;for(const [x,y] of r){if(i>=x&&i<=y)return true}return false}
+function rgCount(r,a,b){let n=0;(r||[]).forEach(([x,y])=>{const lo=Math.max(x,a),hi=Math.min(y,b);if(hi>=lo)n+=hi-lo+1});return n}
+function rgFromBools(arr){const o=[];let s=-1;arr.forEach((v,i)=>{if(v&&s<0)s=i;if(!v&&s>=0){o.push([s,i-1]);s=-1}});if(s>=0)o.push([s,arr.length-1]);return o}
+
+/* ---- materiais (PDFs) do usuário ---- */
+function mats(){return KV.get('mats',[])||[]}
+function mpg(){return KV.get('mpg',{})||{}}
+function matById(id){return mats().find(m=>m.id===id)}
+function matPages(m){return Math.max(0,(+m.pf||0)-(+m.pi||1)+1)}
+function matRead(m){return rgCount(mpg()[m.id],+m.pi||1,+m.pf||0)}
+function matEds(m,eds){const ids=eds.map(e=>e.id);
+  if(m.eds&&m.eds.length)return m.eds.filter(i=>ids.includes(i));
+  const w=ED.filter(e=>e.disc.some(d=>dkey(d.d)===m.disc)).map(e=>e.id).filter(i=>ids.includes(i));
+  return w.length?w:(ED.some(e=>e.disc.some(d=>dkey(d.d)===m.disc))?[]:ids)}
+
+/* ---- disciplinas e ordem do usuário ---- */
+function discList(eds){const s=[];(eds||ED).slice().sort((a,b)=>(a.data||'9')<(b.data||'9')?-1:1).forEach(e=>e.disc.forEach(d=>{const k=dkey(d.d);if(!s.includes(k))s.push(k)}));mats().forEach(m=>{if(m.disc&&!s.includes(m.disc))s.push(m.disc)});return s}
+function discOrder(){const nat=discList(ED);const u=(KV.get('dord',null)||[]).filter(k=>nat.includes(k));nat.forEach(k=>{if(!u.includes(k))u.push(k)});return u}
+const ORD_USES_DISC=o=>o==='disc'||o==='prazo_disc';
+
+/* ---- configuração (início gravado) ---- */
+function cfgKey(eid){return eid?'cfg_'+eid:'cfg_all'}
+function cfgDef(eid){if(eid){const e=edById[eid];return {ini:iso(today()),fim:e&&e.data?addDays(e.data,-1):iso(today()),wd:[1,1,1,1,1,1,1],imp:true,ordem:'edital',rev:0}}
+  const def=ED.filter(e=>e.data&&daysTo(e.data)>=0).map(e=>e.id);const last=ED.filter(e=>def.includes(e.id)).map(e=>e.data).sort().pop();
+  return {eds:def,ini:iso(today()),fim:last?addDays(last,-1):iso(today()),wd:[1,1,1,1,1,1,1],imp:true,ordem:'prazo',rev:2}}
+function cfgPeek(eid){return KV.get(cfgKey(eid),null)||cfgDef(eid)}
+function cfgGet(eid){let c=KV.get(cfgKey(eid),null);
+  if(!c){c=cfgDef(eid);const dn=KV.get(eid?'done_'+eid:'done_all',{})||{};const ds=Object.keys(dn).sort();if(ds.length&&ds[0]<c.ini)c.ini=ds[0];c.v=1;KV.set(cfgKey(eid),c)}
+  if(c.v!==2)migrateDone(eid,c);
+  return c}
+// versão anterior: o dia marcado não gravava os artigos como lidos. Converte as marcações antigas em leitura.
+function migrateDone(eid,c){c.v=2;KV.set(cfgKey(eid),c);const dk=eid?'done_'+eid:'done_all';const dn=KV.get(dk,{})||{};const ds=Object.keys(dn);if(!ds.length)return;
+  const P=sched(eid,c);const keep={};ds.forEach(dt=>{const x=P.byDt[dt];if(!x)return;if(x.study)markDay(x,true);else keep[dt]=1});KV.set(dk,keep)}
+
+/* ---- estado de leitura (cache por renderização) ---- */
+let RS={};
+function readA(k){return RS[k]||(RS[k]=RD.artSet(k))}
+function dayState(x,pg){let tot=0,rd=0;(x.ua||[]).forEach(u=>{tot++;if(readA(u.k).has(u.a))rd++});(x.up||[]).forEach(u=>{tot++;if(rgHas(pg[u.m],u.i))rd++});return {tot,rd}}
+function markDay(x,on){const by={};(x.ua||[]).forEach(u=>(by[u.k]=by[u.k]||[]).push(u.a));
+  Object.entries(by).forEach(([k,as])=>{const s=RD.artSet(k);as.forEach(a=>on?s.add(a):s.delete(a));RD.saveArt(k,s);delete RS[k]});
+  if((x.up||[]).length){const pg=mpg();(x.pages||[]).forEach(p=>{pg[p.m]=on?rgAdd(pg[p.m],p.a,p.b):rgDel(pg[p.m],p.a,p.b);if(!pg[p.m].length)delete pg[p.m]});KV.set('mpg',pg)}}
+
+/* ---- distribuição ---- */
+function alloc(units,study,eds,mode,warn,lbl){const n=study.length,al=new Array(n).fill(0),total=units.length;if(!n||!total)return al;
+  const spread=(from,cnt,need)=>{for(let i=0;i<cnt;i++)al[from+i]+=Math.round(need*(i+1)/cnt)-Math.round(need*i/cnt)};
+  if(mode==='u'){spread(0,n,total);return al}
+  const dl=eds.filter(e=>e.data).map(e=>({e,W:units.filter(u=>u.due&&u.due<=e.data).length,Dd:study.filter(x=>x.dt<e.data).length}));
+  let ti=0,w=0;
+  while(w<total&&ti<n){let best=null;
+    dl.forEach(x=>{if(x.W<=w)return;const days=x.Dd-ti;const rate=days>0?(x.W-w)/days:Infinity;if(!best||rate>=best.rate)best={x,rate,days}});
+    if(!best){spread(ti,n-ti,total-w);w=total;break}
+    if(best.days<=0){warn.push(`Sem dias de estudo antes da prova ${best.x.e.sigla}: ${fmtN(best.x.W-w)} ${lbl} ficaram acumulados no dia seguinte disponível.`);al[ti]+=best.x.W-w;w=best.x.W;continue}
+    spread(ti,best.days,best.x.W-w);ti+=best.days;w=best.x.W}
+  if(w<total){warn.push(`${fmtN(total-w)} ${lbl} não couberam no período; foram somados ao último dia.`);al[n-1]+=total-w}
+  return al}
+function grpA(us){const o=[];us.forEach(u=>{const l=o[o.length-1];if(l&&l.k===u.k&&u.i===l.ie+1){l.b=u.a;l.ie=u.i;l.n++}else o.push({k:u.k,a:u.a,b:u.a,is:u.i,ie:u.i,n:1})});return o}
+function grpP(us){const o=[];us.forEach(u=>{const l=o[o.length-1];if(l&&l.m===u.m&&u.i===l.b+1){l.b=u.i;l.n++}else o.push({m:u.m,a:u.i,b:u.i,n:1})});return o}
+
+/* ---- montagem do cronograma (eid = um edital; null = todos juntos) ---- */
+function sched(eid,cIn){
+  const c=cIn||cfgGet(eid);const single=!!eid;
+  const eds=(single?[edById[eid]]:(c.eds||[]).map(id=>edById[id])).filter(e=>e&&(single||e.data)).sort((a,b)=>(a.data||'9')<(b.data||'9')?-1:1);
+  const base=KV.get('base_'+(eid||'all'),null)||{la:{},pg:{}};
+  const dOrd=discOrder();const dIx=k=>{const i=dOrd.indexOf(k);return i<0?999:i};
+  const L={};let nat=0;
+  eds.forEach(e=>e.disc.forEach(d=>d.leis.forEach(([k,p,ex])=>{if(!c.imp&&!(ex&&ex.length))return;const l=LEIS[k];if(!l||l.t==='RES')return;const lab=leiLabels(k);if(!lab.length)return;
+    const dk=dkey(d.d);let o=L[k];if(!o)o=L[k]={t:'a',k,lab,due:e.data||null,eds:new Set(),dk,nat:nat++,sc:{}};
+    o.eds.add(e.id);if(e.data&&(!o.due||e.data<o.due))o.due=e.data;o.sc[dk]=(o.sc[dk]||0)+((p&&p.length)||1)+(ex&&ex.length?.5:0)})));
+  // disciplina "de origem" da norma: onde ela aparece em mais pontos (a CF fica em Constitucional, o CP em Penal); empate → a sua ordem
+  Object.values(L).forEach(o=>{o.dk=Object.keys(o.sc).sort((a,b)=>(o.sc[b]-o.sc[a])||(dIx(a)-dIx(b)))[0]});
+  const M={};mats().forEach((m,i)=>{const me=matEds(m,eds);if(!me.length||matPages(m)<=0)return;const dues=me.map(id=>edById[id]&&edById[id].data).filter(Boolean).sort();M[m.id]={t:'p',m,due:dues[0]||null,dk:m.disc,nat:i,eds:new Set(me)}});
+  const o=c.ordem;const dk=x=>x.due||'9999';const sz=x=>x.t==='a'?x.lab.length:matPages(x.m);
+  const cmp=(a,b)=>o==='tamanho'?(sz(a)-sz(b))||(a.nat-b.nat)
+    :o==='disc'?(dIx(a.dk)-dIx(b.dk))||(a.nat-b.nat)
+    :o==='prazo_disc'?(dk(a)<dk(b)?-1:dk(a)>dk(b)?1:0)||(dIx(a.dk)-dIx(b.dk))||(a.nat-b.nat)
+    :(dk(a)<dk(b)?-1:dk(a)>dk(b)?1:0)||(a.nat-b.nat);
+  const la=Object.values(L).sort(cmp),lp=Object.values(M).sort(cmp);
+  const ua=[],up=[];
+  la.forEach(x=>{const r=base.la&&base.la[x.k];x.lab.forEach((a,i)=>{if(!rgHas(r,i))ua.push({k:x.k,i,a,due:x.due})})});
+  lp.forEach(x=>{const r=base.pg&&base.pg[x.m.id];for(let p=+x.m.pi||1;p<=+x.m.pf;p++)if(!rgHas(r,p))up.push({m:x.m.id,i:p,due:x.due})});
+  // dias
+  const ex=single?{}:Object.fromEntries(eds.map(e=>[e.data,e]));const revSet={};
+  if(single){const sd=[];let t=c.ini;while(t<=c.fim){if(c.wd[parseISO(t).getDay()])sd.push(t);t=addDays(t,1)}const rv=Math.min(c.rev||0,Math.max(0,sd.length-1));sd.slice(sd.length-rv).forEach(d=>revSet[d]=eds[0])}
+  else eds.forEach(e=>{let n=0,t=addDays(e.data,-1);while(n<(c.rev||0)&&t>=c.ini){if(c.wd[parseISO(t).getDay()]&&!ex[t]&&!revSet[t]){revSet[t]=e;n++}t=addDays(t,-1)}});
+  const days=[];let t=c.ini;
+  while(t<=c.fim){if(ex[t])days.push({dt:t,exam:ex[t]});else if(revSet[t])days.push({dt:t,rev:revSet[t]});else if(c.wd[parseISO(t).getDay()])days.push({dt:t,study:true});t=addDays(t,1)}
+  eds.forEach(e=>{if(e.data&&e.data>=c.ini&&!days.some(x=>x.dt===e.data))days.push({dt:e.data,exam:e})});
+  days.sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0);
+  const study=days.filter(x=>x.study);const warn=[];
+  const mode=(single||o==='disc'||o==='uniforme')?'u':'b';
+  if(!study.length)warn.push('Não há dias de estudo no período escolhido.');
+  const aA=alloc(ua,study,eds,mode,warn,'artigos'),aP=alloc(up,study,eds,mode,warn,'páginas de PDF');
+  let pa=0,pp=0;study.forEach((x,i)=>{x.ua=ua.slice(pa,pa+aA[i]);x.up=up.slice(pp,pp+aP[i]);pa+=aA[i];pp+=aP[i];x.items=grpA(x.ua);x.pages=grpP(x.up);x.n=x.ua.length;x.np=x.up.length});
+  if(mode==='u'&&!single){eds.forEach(e=>{let a=0,p=0;study.forEach(x=>{if(x.dt<e.data)return;x.ua.forEach(u=>{if(L[u.k].eds.has(e.id))a++});x.up.forEach(u=>{if(M[u.m].eds.has(e.id))p++})});
+    if(a||p)warn.push(`Nesta ordem, ${a?fmtN(a)+' artigos':''}${a&&p?' e ':''}${p?fmtN(p)+' páginas':''} do ${e.sigla} ficam para depois da prova (${fmtD(e.data)}). Para evitar, use uma ordem que respeite as datas das provas.`)})}
+  const useBy={};Object.values(L).forEach(x=>useBy[x.k]=x.eds);
+  const matBy={};Object.values(M).forEach(x=>matBy[x.m.id]=x.eds);
+  const byDt=Object.fromEntries(days.map(x=>[x.dt,x]));
+  const totA=Object.values(L).reduce((s,x)=>s+x.lab.length,0),totP=Object.values(M).reduce((s,x)=>s+matPages(x.m),0);
+  return {c,eds,days,study,byDt,warn,useBy,matBy,L,M,ua:ua.length,up:up.length,totA,totP,
+    perA:study.length?ua.length/study.length:0,perP:study.length?up.length/study.length:0,
+    maxA:study.length?Math.max(...study.map(x=>x.n)):0,maxP:study.length?Math.max(...study.map(x=>x.np)):0,base,single}}
+
+/* ---- replanejar: o que já foi lido sai do plano; o restante é redistribuído a partir de hoje ---- */
+function replan(eid,newIni){const c=cfgGet(eid);const P=sched(eid,c);const base={la:{},pg:{},t:iso(today())};
+  Object.values(P.L).forEach(x=>{const s=RD.artSet(x.k);const r=rgFromBools(x.lab.map(a=>s.has(a)));if(r.length)base.la[x.k]=r});
+  const pg=mpg();Object.keys(P.M).forEach(id=>{if(pg[id])base.pg[id]=pg[id]});
+  KV.set('base_'+(eid||'all'),base);c.ini=newIni||iso(today());KV.set(cfgKey(eid),c);KV.set(eid?'done_'+eid:'done_all',{});RS={}}
+function scopesSaved(){const s=[];if(KV.get('cfg_all',null))s.push(null);ED.forEach(e=>{if(KV.get('cfg_'+e.id,null))s.push(e.id)});return s}
+function replanAll(){scopesSaved().forEach(eid=>{const c=cfgGet(eid);replan(eid,c.ini>iso(today())?c.ini:null)})}
+
+/* ---- progresso (painel) ---- */
+function cronoProgress(eid){const e=edById[eid];if(!e)return 0;const c=cfgPeek(eid);let t=0,n=0;const seen=new Set();
+  e.disc.forEach(d=>d.leis.forEach(([k,p,ex])=>{if(seen.has(k))return;if(!c.imp&&!(ex&&ex.length))return;const l=LEIS[k];if(!l||l.t==='RES')return;const lab=leiLabels(k);if(!lab.length)return;seen.add(k);const s=RD.artSet(k);t+=lab.length;lab.forEach(a=>{if(s.has(a))n++})}));
+  mats().forEach(m=>{if(!matEds(m,[e]).length)return;t+=matPages(m);n+=matRead(m)});
+  return t?Math.floor(n*100/t):0}
+
 function precDayCount(items){const seen=new Set();items.forEach(it=>{const lab=leiLabels(it.k);const i0=lab.indexOf(it.a),i1=lab.indexOf(it.b);if(i0<0)return;for(let i=i0;i<=i1;i++){PKEYS.forEach(pk=>(PREC[pk].byArt[it.k+'|'+lab[i]]||[]).forEach(x=>seen.add(pk+':'+x._i)))}});return {n:seen.size,ids:[...seen]}}
 function bindPrecDays(root){$$('[data-pd]',root).forEach(b=>b.onclick=()=>{const by={};b.dataset.pd.split(',').forEach(x=>{const [pk,i]=x.split(':');(by[pk]=by[pk]||[]).push(PREC[pk].itens[+i])});const ks=Object.keys(by);
   if(ks.length===1)openPrecList('Precedentes dos artigos do dia '+fmtD(b.dataset.dt),PREC[ks[0]],by[ks[0]],PREC[ks[0]].disc+' · itens vinculados aos artigos programados');
   else openDrawer(`<h2 style="font-family:Fraunces,Georgia,serif;font-size:22px">Precedentes dos artigos do dia ${fmtD(b.dataset.dt)}</h2>`+ks.map(k=>`<h3 style="margin:12px 0 6px">${esc(PREC[k].disc)}</h3><div data-pk="${k}">${sortItems(by[k]).map(it=>cardHTML(it,PREC[k])).join('')}</div>`).join(''),el=>$$('[data-pk]',el).forEach(x=>bindCards(x,PREC[x.dataset.pk])))})}
 function precChip(items,dt){if(!PKEYS.length)return '';const r=precDayCount(items);return r.n?`<span class="pbtn" data-pd="${r.ids.join(',')}" data-dt="${dt}">⚖ ${r.n}</span>`:''}
-function dayItemsHTML(items,useBy){return items.map(it=>`<span data-lei="${it.k}" style="cursor:pointer"><b>${esc(LEIS[it.k].sigla||leiTitulo(it.k))}</b> art. ${esc(it.a)}${it.a!==it.b?'–'+esc(it.b):''}${useBy?`<span class="cmb">${[...(useBy[it.k]||[])].map(id=>`<i style="background:${edById[id].cor}" title="${esc(edById[id].sigla)}"></i>`).join('')}</span>`:''}</span>`).join('')}
+function dots(set){return set?`<span class="cmb">${[...set].filter(id=>edById[id]).map(id=>`<i style="background:${edById[id].cor}" title="${esc(edById[id].sigla)}"></i>`).join('')}</span>`:''}
+function dayItemsHTML(items,useBy){return items.map(it=>`<span data-lei="${it.k}" style="cursor:pointer"><b>${esc(LEIS[it.k].sigla||leiTitulo(it.k))}</b> art. ${esc(it.a)}${it.a!==it.b?'–'+esc(it.b):''}${useBy?dots(useBy[it.k]):''}</span>`).join('')}
+function dayPagesHTML(pages,matBy){return (pages||[]).map(p=>{const m=matById(p.m);return m?`<span class="pgi" title="${esc(m.disc||'')}"><b>PDF</b> ${esc(m.nome)} · p. ${p.a}${p.a!==p.b?'–'+p.b:''} <span class="muted">(${p.n} pág.)</span>${matBy?dots(matBy[p.m]):''}</span>`:''}).join('')}
+function itemsText(x){return [...(x.items||[]).map(it=>(LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:'')),...(x.pages||[]).map(p=>{const m=matById(p.m);return (m?m.nome:'PDF')+' p. '+p.a+(p.a!==p.b?'–'+p.b:'')})].join('; ')}
+function cntTxt(a,p){return [a?fmtN(a)+' art.':'',p?fmtN(p)+' pág.':''].filter(Boolean).join(' · ')||'—'}
+
+/* ---- tela ---- */
 function rCrono(){
-  const cm=LS.get('cmode','ed');
-  let h=`<h2 class="sec">Cronograma de leitura</h2><div class="toolbar"><div class="seg"><button data-cm="ed" class="${cm==='ed'?'on':''}">Por edital</button><button data-cm="all" class="${cm==='all'?'on':''}">Todos os editais juntos</button></div></div>`;
+  RS={};const cm=LS.get('cmode','ed');
+  let h=`<h2 class="sec">Cronograma de leitura</h2><div class="toolbar"><div class="seg"><button data-cm="ed" class="${cm==='ed'?'on':''}">Por edital</button><button data-cm="all" class="${cm==='all'?'on':''}">Todos os editais juntos</button></div>
+   <span style="margin-left:auto"></span><button class="btn" id="crPrint">⎙ Imprimir / PDF</button><button class="btn" id="crDl">Baixar para imprimir (.html)</button></div><div class="small muted" id="crMsg"></div>`;
   $('#v-crono').innerHTML=h+'<div id="crb"></div>';
   $$('#v-crono [data-cm]').forEach(b=>b.onclick=()=>{LS.set('cmode',b.dataset.cm);rCrono()});
-  if(cm==='all')rCronoAll();else rCronoEd();
+  const eid=cm==='all'?null:st.ed;
+  if(eid&&!edById[eid]){$('#crb').innerHTML='<div class="empty">Escolha um edital.</div>';return}
+  const pr=()=>{const P=sched(eid);return [prSched(P,eid),eid?'Radar - Cronograma '+edById[eid].sigla:'Radar - Cronograma de todos os editais']};
+  $('#crPrint').onclick=()=>{const [hh,t]=pr();$('#crMsg').textContent='Abrindo a impressão…';setTimeout(()=>{if(!doPrint(hh,t))$('#crMsg').textContent='A impressão foi bloqueada aqui. Use "Baixar para imprimir".';else $('#crMsg').textContent='Se a janela de impressão não abrir, use "Baixar para imprimir": abra o arquivo baixado e ele imprime em A4 paisagem.'},50)};
+  $('#crDl').onclick=async()=>{const [hh,t]=pr();try{await saveFile(t.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w\- ]+/g,'').replace(/\s+/g,'-')+'.html',standaloneHTML(hh,t),'text/html;charset=utf-8');$('#crMsg').textContent='Arquivo gerado. Abra-o no navegador para imprimir ou salvar em PDF.'}catch(err){$('#crMsg').textContent='Download não concluído.'}};
+  rCronoBody(eid);
 }
-function rCronoEd(){
-  const e=edById[st.ed];if(!e){$('#crb').innerHTML='<div class="empty">Escolha um edital.</div>';return}
-  const c=cronoCfg(e.id),P=buildPlan(e.id),done=KV.get('done_'+e.id,{});const tdy=iso(today());
-  let h=`<div class="glass panel"><h3 style="margin-bottom:10px">${esc(e.sigla)} — prova em ${e.data?fmtD(e.data):'data não definida'}</h3><div class="form">
-   <label>Início<input type="date" id="ci" value="${c.ini}"></label><label>Fim${e.data?' (véspera da prova: '+fmtD(addDays(e.data,-1))+')':''}<input type="date" id="cf" value="${c.fim}"></label>
-   <label>Ordem<select id="co"><option value="edital" ${c.ordem==='edital'?'selected':''}>Ordem do edital</option><option value="tamanho" ${c.ordem==='tamanho'?'selected':''}>Leis menores primeiro</option></select></label>
+function rCronoBody(eid){
+  const P=sched(eid),c=P.c,single=P.single,tdy=iso(today());const pg=mpg();const dn=KV.get(eid?'done_'+eid:'done_all',{})||{};
+  const e=single?edById[eid]:null;
+  const ordOpts=single?[['edital','Ordem do edital'],['tamanho','Leis e PDFs menores primeiro'],['disc','Minha ordem de disciplinas']]
+    :[['prazo','Pela data das provas (equilibrada)'],['prazo_disc','Pela data das provas e, dentro de cada prova, na minha ordem de disciplinas'],['disc','Somente a minha ordem de disciplinas (carga uniforme)'],['uniforme','Carga uniforme na ordem padrão (ignora prazos)']];
+  let h=`<div class="glass panel">${single?`<h3 style="margin-bottom:10px">${esc(e.sigla)} — prova em ${e.data?fmtD(e.data):'data não definida'}</h3>`:''}<div class="form">
+   ${single?'':`<label style="grid-column:1/-1">Editais incluídos<div class="wk">${ED.filter(x=>x.data).map(x=>`<label><input type="checkbox" data-ce="${x.id}" ${(c.eds||[]).includes(x.id)?'checked':''}><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${x.cor}"></span>${esc(x.sigla)}</label>`).join('')}</div></label>`}
+   <label>Início do plano<input type="date" id="ci" value="${c.ini}"></label><label>Fim${single&&e.data?' (véspera: '+fmtD(addDays(e.data,-1))+')':''}<input type="date" id="cf" value="${c.fim}"></label>
+   <label>Ordem<select id="co">${ordOpts.map(([v,t])=>`<option value="${v}" ${c.ordem===v?'selected':''}>${esc(t)}</option>`).join('')}</select></label>
    <label>Normas<select id="cm"><option value="1" ${c.imp?'selected':''}>Expressas e implícitas</option><option value="0" ${!c.imp?'selected':''}>Só expressas</option></select></label>
-   <label>Dias finais só de revisão<input type="number" min="0" max="60" id="cr" value="${c.rev||0}"></label>
-   <label>Dias de estudo<div class="wk">${WDN.map((n,i)=>`<label><input type="checkbox" data-wd="${i}" ${c.wd[i]?'checked':''}>${n}</label>`).join('')}</div></label></div>`;
-  const sd=P.plan.filter(x=>!x.rev).length;
-  h+=`<div class="toolbar"><div><b>${fmtN(P.total)}</b> artigos de <b>${P.seq.length}</b> normas · <b>${sd}</b> dias de leitura · ≈ <b>${P.per?Math.ceil(P.per):0}</b> artigos/dia</div><span class="muted small" style="margin-left:auto">Cada norma entra uma vez, mesmo quando repetida em várias disciplinas.</span><button class="btn" id="goToday">Ir para hoje</button><button class="btn" id="ics">Copiar cronograma</button></div>`;
-  h+=`<div id="days">${P.plan.map(d=>{const dd=parseISO(d.dt);return `<div class="day ${d.dt===tdy?'today':''} ${done[d.dt]?'done':''}" id="d-${d.dt}"><input type="checkbox" data-dt="${d.dt}" ${done[d.dt]?'checked':''}><div><div class="dt">${fmtD(d.dt)}</div><div class="muted small">${WDN[dd.getDay()]} · ${d.rev?'revisão':d.n+' art.'}</div></div><div class="it">${d.rev?'<span>Revisão geral dos artigos destacados</span>':dayItemsHTML(d.items)+precChip(d.items,d.dt)}</div></div>`}).join('')||'<div class="empty">Sem dias no período.</div>'}</div></div>`;
-  $('#crb').innerHTML=h;
-  const save=()=>{KV.set('cfg_'+e.id,{ini:$('#ci').value,fim:$('#cf').value,ordem:$('#co').value,imp:$('#cm').value==='1',rev:+$('#cr').value||0,wd:$$('[data-wd]').map(x=>x.checked?1:0)});rCrono()};
-  ['#ci','#cf','#co','#cm','#cr'].forEach(s=>$(s).onchange=save);$$('[data-wd]').forEach(x=>x.onchange=save);
-  $$('#days input[data-dt]').forEach(x=>x.onchange=()=>{const dn=KV.get('done_'+e.id,{});if(x.checked)dn[x.dataset.dt]=1;else delete dn[x.dataset.dt];KV.set('done_'+e.id,dn);x.closest('.day').classList.toggle('done',x.checked)});
-  $('#goToday').onclick=()=>{const el=document.getElementById('d-'+tdy);el&&el.scrollIntoView({behavior:'smooth',block:'center'})};
-  $('#ics').onclick=()=>{const t=P.plan.map(d=>fmtD(d.dt)+'\t'+(d.rev?'Revisão':d.items.map(it=>(LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:'')).join('; '))).join('\n');copyText(t,'#ics','Cronograma copiado')};
-  bindLei($('#crb'));bindPrecDays($('#crb'));
-}
-function rCronoAll(){
-  const c=cfgAll(),P=buildAll(),done=KV.get('done_all',{});const tdy=iso(today());
-  let h=`<div class="glass panel"><div class="form"><label>Editais incluídos<div class="wk">${ED.filter(e=>e.data).map(e=>`<label><input type="checkbox" data-ce="${e.id}" ${c.eds.includes(e.id)?'checked':''}><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${e.cor}"></span>${esc(e.sigla)}</label>`).join('')}</div></label>
-   <label>Início<input type="date" id="ci" value="${c.ini}"></label><label>Fim<input type="date" id="cf" value="${c.fim}"></label>
-   <label>Distribuição<select id="co"><option value="prazo" ${c.ordem==='prazo'?'selected':''}>Equilibrada, cada norma antes da 1ª prova que a cobra</option><option value="uniforme" ${c.ordem==='uniforme'?'selected':''}>Uniforme (mesma carga diária, ignora prazos)</option></select></label>
-   <label>Normas<select id="cm"><option value="1" ${c.imp?'selected':''}>Expressas e implícitas</option><option value="0" ${!c.imp?'selected':''}>Só expressas</option></select></label>
-   <label>Dias de revisão antes de cada prova<input type="number" min="0" max="20" id="cr" value="${c.rev||0}"></label>
-   <label>Dias de estudo<div class="wk">${WDN.map((n,i)=>`<label><input type="checkbox" data-wd="${i}" ${c.wd[i]?'checked':''}>${n}</label>`).join('')}</div></label></div>`;
-  const sd=P.all.filter(x=>x.study).length;
-  h+=`<div class="toolbar"><div><b>${fmtN(P.total)}</b> artigos de <b>${P.seq.length}</b> normas sem repetição · <b>${sd}</b> dias de leitura · média ≈ <b>${P.per?Math.ceil(P.per):0}</b>/dia${P.maxDay?` · pico <b>${fmtN(P.maxDay)}</b>/dia`:''}</div><button class="btn" id="goToday" style="margin-left:auto">Ir para hoje</button><button class="btn" id="ics">Copiar cronograma</button></div>
-  <div class="muted small">Ordem: as normas da prova mais próxima vêm primeiro; uma norma cobrada em vários editais entra uma única vez, antes da primeira prova que a cobra. Os pontos coloridos indicam em quais editais a norma aparece.</div>`;
+   <label>${single?'Dias finais só de revisão':'Dias de revisão antes de cada prova'}<input type="number" min="0" max="60" id="cr" value="${c.rev||0}"></label>
+   <label style="grid-column:1/-1">Dias de estudo<div class="wk">${WDN.map((n,i)=>`<label><input type="checkbox" data-wd="${i}" ${c.wd[i]?'checked':''}>${n}</label>`).join('')}</div></label></div>
+   <div class="muted small">A data de início fica gravada: o cronograma não recomeça sozinho a cada dia. Alterar a configuração refaz o plano a partir de hoje com o que ainda falta ler (o que você já leu é preservado).</div></div>`;
+  // ordem das disciplinas
+  const dOrd=discOrder();
+  h+=`<details class="glass panel crdet" id="dordBox" ${LS.get('dordOpen',0)?'open':''}><summary><b>Ordem das disciplinas</b> <span class="muted small">${ORD_USES_DISC(c.ordem)?'em uso neste cronograma':'— para usar, escolha "minha ordem de disciplinas" em Ordem'}</span></summary>
+   <div class="muted small" style="margin:8px 0">Use as setas para definir a sequência em que quer estudar. Vale para os dois modos (por edital e todos juntos). Uma lei cobrada em várias disciplinas fica na disciplina em que aparece em mais pontos do edital (a CF em Constitucional, o CP em Penal).</div>
+   <ol class="dord">${dOrd.map((k,i)=>`<li><span class="dn">${i+1}</span><span class="dt2">${esc(k)}</span><button class="btn sm" data-dup="${i}" ${i===0?'disabled':''} title="Subir">↑</button><button class="btn sm" data-ddn="${i}" ${i===dOrd.length-1?'disabled':''} title="Descer">↓</button><button class="btn sm" data-dtop="${i}" ${i===0?'disabled':''} title="Mover para o início">Topo</button></li>`).join('')}</ol>
+   <div class="toolbar" style="margin-top:8px"><button class="btn sm" id="dordReset">Restaurar ordem padrão</button></div></details>`;
+  // materiais
+  const ms=mats();
+  h+=`<details class="glass panel crdet" id="matBox" ${LS.get('matOpen',0)?'open':''}><summary><b>Meus PDFs e materiais</b> <span class="muted small">${ms.length?ms.length+' cadastrado(s) · '+fmtN(ms.reduce((s,m)=>s+matPages(m),0))+' páginas':'nenhum cadastrado'}</span></summary>
+   <div class="muted small" style="margin:8px 0">Cadastre apostilas, livros e PDFs que não estão no Radar. Informe as páginas a ler: o cronograma calcula quantas páginas por dia, junto com os artigos de lei, na ordem e nos prazos escolhidos.</div>
+   <div class="fgrid matf"><label>Nome do material<input class="in" id="mNome" placeholder="Ex.: Apostila de Direito Penal"></label>
+    <label>Disciplina<select class="in" id="mDisc">${discList(ED).map(k=>`<option>${esc(k)}</option>`).join('')}<option value="__nova">Outra (digitar)…</option></select></label>
+    <label id="mNovaL" hidden>Nome da disciplina<input class="in" id="mNova"></label>
+    <label>Da página<input class="in" type="number" min="1" id="mPi" value="1"></label><label>Até a página<input class="in" type="number" min="1" id="mPf" placeholder="Ex.: 1215"></label>
+    <label style="grid-column:1/-1">Editais que este material atende <span class="muted">(sem marcar nenhum: os editais que cobram a disciplina)</span><div class="wk">${ED.map(x=>`<label><input type="checkbox" data-me="${x.id}">${esc(x.sigla)}</label>`).join('')}</div></label></div>
+   <div class="toolbar"><button class="btn pri" id="mAdd">Adicionar ao cronograma</button><button class="btn" id="mCancel" hidden>Cancelar edição</button><span class="small muted" id="mMsg"></span></div>
+   ${ms.length?`<div class="tbl"><table class="mtab"><thead><tr><th>Material</th><th>Disciplina</th><th class="num">Páginas</th><th>Lidas</th><th>Editais</th><th></th></tr></thead><tbody>${ms.map(m=>{const t=matPages(m),r=matRead(m),pc=t?Math.floor(r*100/t):0;const me=m.eds&&m.eds.length?m.eds:matEds(m,ED);
+     return `<tr><td><b>${esc(m.nome)}</b></td><td>${esc(m.disc)}</td><td class="num">${m.pi}–${m.pf}<div class="muted small">${fmtN(t)} pág.</div></td><td style="min-width:150px">${fmtN(r)} de ${fmtN(t)} (${pc}%)${pbar(pc)}<div class="small" style="margin-top:4px;display:flex;gap:4px;align-items:center">Li até a p. <input class="in sm" type="number" data-mupto="${m.id}" min="${m.pi}" max="${m.pf}" style="width:80px"><button class="btn sm" data-mok="${m.id}">OK</button></div></td><td>${me.filter(id=>edById[id]).map(id=>`<span class="tag" style="border-color:${edById[id].cor}">${esc(edById[id].sigla)}</span>`).join(' ')||'<span class="muted small">todos</span>'}${m.eds&&m.eds.length?'':'<div class="muted small">automático</div>'}</td><td style="white-space:nowrap"><button class="btn sm" data-medit="${m.id}">Editar</button> <button class="btn sm dan" data-mdel="${m.id}">Excluir</button></td></tr>`}).join('')}</tbody></table></div>`:''}</details>`;
+  // resumo
+  const sd=P.study.length;
+  h+=`<div class="toolbar" style="margin-top:12px"><div>Falta ler no plano: <b>${fmtN(P.ua)}</b> artigos${P.up?` e <b>${fmtN(P.up)}</b> páginas de PDF`:''} · <b>${sd}</b> dias de leitura · média ≈ <b>${Math.ceil(P.perA)}</b> art./dia${P.up?` e <b>${Math.ceil(P.perP)}</b> pág./dia`:''}${P.maxA&&!single?` · pico ${fmtN(P.maxA)} art.`:''}</div><button class="btn" id="goToday" style="margin-left:auto">Ir para hoje</button><button class="btn" id="ics">Copiar cronograma</button></div>
+   <div class="muted small">Início do plano: <b>${fmtD(c.ini)}</b>${P.base&&P.base.t?` · replanejado em ${fmtD(P.base.t)} (o que já estava lido saiu do plano)`:''}${single?'':' · uma norma cobrada em vários editais entra uma única vez; os pontos coloridos indicam os editais.'}</div>`;
+  // atrasos
+  const late=P.study.filter(x=>x.dt<tdy).map(x=>({x,s:dayState(x,pg)})).filter(o=>o.s.tot>o.s.rd);
+  if(late.length){let la=0,lp=0;late.forEach(({x})=>{x.ua.forEach(u=>{if(!readA(u.k).has(u.a))la++});x.up.forEach(u=>{if(!rgHas(pg[u.m],u.i))lp++})});
+    h+=`<div class="latebox"><div class="lh"><b>Em atraso: ${late.length} dia(s)</b> — ${fmtN(la)} artigo(s)${lp?` e ${fmtN(lp)} página(s)`:''} sem leitura, de ${fmtD(late[0].x.dt)} a ${fmtD(late[late.length-1].x.dt)}.</div>
+     <div class="toolbar" style="margin:8px 0 0"><button class="btn sm" id="goLate">Ver o primeiro atraso</button><button class="btn sm pri" id="replan">Replanejar a partir de hoje</button><span class="small">Marque os dias que já leu; o replanejamento distribui o restante pelos dias que faltam.</span></div></div>`}
+  else if(P.study.some(x=>x.dt<tdy))h+=`<div class="okbox">Nenhum atraso: tudo o que estava previsto até ontem foi lido.</div>`;
   P.warn.forEach(w=>h+=`<div class="warnbox">${esc(w)}</div>`);
-  h+=`<div id="days" style="margin-top:10px">${P.all.sort((a,b)=>a.dt<b.dt?-1:1).map(x=>{const dd=parseISO(x.dt);
+  // dias
+  h+=`<div id="days" style="margin-top:10px">${P.days.map(x=>{const dd=parseISO(x.dt);
     if(x.exam)return `<div class="day exam" style="--c:${x.exam.cor}" id="d-${x.dt}"><span></span><div><div class="dt">${fmtD(x.dt)}</div><div class="muted small">${WDN[dd.getDay()]}</div></div><div class="it"><span style="background:${x.exam.cor};color:#fff;border:0"><b>Prova ${esc(x.exam.sigla)}</b></span></div></div>`;
-    if(x.rev)return `<div class="day ${x.dt===tdy?'today':''} ${done[x.dt]?'done':''}" id="d-${x.dt}"><input type="checkbox" data-dt="${x.dt}" ${done[x.dt]?'checked':''}><div><div class="dt">${fmtD(x.dt)}</div><div class="muted small">${WDN[dd.getDay()]} · revisão</div></div><div class="it"><span>Revisão para ${esc(x.rev.sigla)}</span></div></div>`;
-    return `<div class="day ${x.dt===tdy?'today':''} ${done[x.dt]?'done':''}" id="d-${x.dt}"><input type="checkbox" data-dt="${x.dt}" ${done[x.dt]?'checked':''}><div><div class="dt">${fmtD(x.dt)}</div><div class="muted small">${WDN[dd.getDay()]} · ${x.n} art.</div></div><div class="it">${x.items.length?dayItemsHTML(x.items,P.useBy)+precChip(x.items,x.dt):'<span class="muted">folga ou concluído</span>'}</div></div>`}).join('')}</div></div>`;
+    if(x.rev){const on=!!dn[x.dt];return `<div class="day ${x.dt===tdy?'today':''} ${on?'done':''}" id="d-${x.dt}"><input type="checkbox" data-rv="${x.dt}" ${on?'checked':''}><div><div class="dt">${fmtD(x.dt)}</div><div class="muted small">${WDN[dd.getDay()]} · revisão</div></div><div class="it"><span>Revisão${single?' geral':' para '+esc(x.rev.sigla)}</span></div></div>`}
+    const s=dayState(x,pg);const done=s.tot>0&&s.rd===s.tot;const isLate=x.dt<tdy&&!done&&s.tot>0;
+    return `<div class="day ${x.dt===tdy?'today':''} ${done?'done':''} ${isLate?'late':''}" id="d-${x.dt}"><input type="checkbox" data-dt="${x.dt}" ${done?'checked':''} ${s.tot?'':'disabled'}><div><div class="dt">${fmtD(x.dt)}</div><div class="muted small">${WDN[dd.getDay()]} · ${cntTxt(x.n,x.np)}</div>${isLate?'<div class="lt">atrasado</div>':''}${s.rd&&!done?`<div class="muted small">lido em parte: ${s.rd}/${s.tot}</div>`:''}</div><div class="it">${x.items.length||x.pages.length?dayItemsHTML(x.items,single?null:P.useBy)+dayPagesHTML(x.pages,single?null:P.matBy)+precChip(x.items,x.dt):'<span class="muted">folga ou concluído</span>'}</div></div>`}).join('')||'<div class="empty">Sem dias no período.</div>'}</div>`;
   $('#crb').innerHTML=h;
-  const save=()=>{KV.set('cfg_all',{eds:$$('[data-ce]').filter(x=>x.checked).map(x=>x.dataset.ce),ini:$('#ci').value,fim:$('#cf').value,ordem:$('#co').value,imp:$('#cm').value==='1',rev:+$('#cr').value||0,wd:$$('[data-wd]').map(x=>x.checked?1:0)});rCrono()};
-  ['#ci','#cf','#co','#cm','#cr'].forEach(s=>$(s).onchange=save);$$('[data-wd],[data-ce]').forEach(x=>x.onchange=save);
-  $$('#days input[data-dt]').forEach(x=>x.onchange=()=>{const dn=KV.get('done_all',{});if(x.checked)dn[x.dataset.dt]=1;else delete dn[x.dataset.dt];KV.set('done_all',dn);x.closest('.day').classList.toggle('done',x.checked)});
-  $('#goToday').onclick=()=>{const el=document.getElementById('d-'+tdy);el&&el.scrollIntoView({behavior:'smooth',block:'center'})};
-  $('#ics').onclick=()=>{const t=P.all.map(x=>fmtD(x.dt)+'\t'+(x.exam?'PROVA '+x.exam.sigla:x.rev?'Revisão '+x.rev.sigla:(x.items||[]).map(it=>(LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:'')).join('; '))).join('\n');copyText(t,'#ics','Cronograma copiado')};
+  // eventos: configuração
+  const save=(iniEdited)=>{const n={...c,ini:c.ini,fim:$('#cf').value,ordem:$('#co').value,imp:$('#cm').value==='1',rev:+$('#cr').value||0,wd:$$('#crb [data-wd]').map(x=>x.checked?1:0)};
+    if(!single)n.eds=$$('#crb [data-ce]').filter(x=>x.checked).map(x=>x.dataset.ce);
+    KV.set(cfgKey(eid),n);const ini=iniEdited?$('#ci').value:(c.ini>tdy?c.ini:null);replan(eid,ini);rCrono()};
+  $('#ci').onchange=()=>save(true);['#cf','#co','#cm','#cr'].forEach(s=>$(s).onchange=()=>save(false));$$('#crb [data-wd],#crb [data-ce]').forEach(x=>x.onchange=()=>save(false));
+  // ordem das disciplinas
+  $('#dordBox').ontoggle=ev=>LS.set('dordOpen',ev.target.open?1:0);$('#matBox').ontoggle=ev=>LS.set('matOpen',ev.target.open?1:0);
+  const setOrd=a=>{KV.set('dord',a);if(ORD_USES_DISC(c.ordem))replan(eid,c.ini>tdy?c.ini:null);rCrono()};
+  $$('#crb [data-dup]').forEach(b=>b.onclick=()=>{const a=discOrder(),i=+b.dataset.dup;[a[i-1],a[i]]=[a[i],a[i-1]];setOrd(a)});
+  $$('#crb [data-ddn]').forEach(b=>b.onclick=()=>{const a=discOrder(),i=+b.dataset.ddn;[a[i+1],a[i]]=[a[i],a[i+1]];setOrd(a)});
+  $$('#crb [data-dtop]').forEach(b=>b.onclick=()=>{const a=discOrder(),i=+b.dataset.dtop;const [x]=a.splice(i,1);a.unshift(x);setOrd(a)});
+  $('#dordReset').onclick=()=>{KV.del('dord');if(ORD_USES_DISC(c.ordem))replan(eid,c.ini>tdy?c.ini:null);rCrono()};
+  // materiais
+  let editing=null;
+  $('#mDisc').onchange=()=>{$('#mNovaL').hidden=$('#mDisc').value!=='__nova'};
+  const fillForm=m=>{editing=m?m.id:null;$('#mNome').value=m?m.nome:'';const opt=[...$('#mDisc').options].some(o=>o.value===(m&&m.disc));$('#mDisc').value=m?(opt?m.disc:'__nova'):$('#mDisc').options[0].value;$('#mNova').value=m&&!opt?m.disc:'';$('#mNovaL').hidden=$('#mDisc').value!=='__nova';$('#mPi').value=m?m.pi:1;$('#mPf').value=m?m.pf:'';$$('#crb [data-me]').forEach(x=>x.checked=!!(m&&m.eds&&m.eds.includes(x.dataset.me)));$('#mAdd').textContent=m?'Salvar alterações':'Adicionar ao cronograma';$('#mCancel').hidden=!m};
+  $('#mCancel').onclick=()=>fillForm(null);
+  $('#mAdd').onclick=()=>{const nome=$('#mNome').value.trim();const disc=$('#mDisc').value==='__nova'?$('#mNova').value.trim():$('#mDisc').value;const pi=parseInt($('#mPi').value,10)||1,pf=parseInt($('#mPf').value,10);
+    if(!nome){$('#mMsg').textContent='Informe o nome do material.';return}if(!disc){$('#mMsg').textContent='Informe a disciplina.';return}if(!pf||pf<pi){$('#mMsg').textContent='Informe a página final (maior ou igual à inicial).';return}
+    const eds=$$('#crb [data-me]').filter(x=>x.checked).map(x=>x.dataset.me);const a=mats();
+    if(editing){const m=a.find(x=>x.id===editing);Object.assign(m,{nome,disc,pi,pf,eds})}else a.push({id:uid('m'),nome,disc,pi,pf,eds,cri:iso(today())});
+    KV.set('mats',a);replanAll();if(!KV.get(cfgKey(eid),null))cfgGet(eid);LS.set('matOpen',1);rCrono()};
+  $$('#crb [data-medit]').forEach(b=>b.onclick=()=>{fillForm(matById(b.dataset.medit));$('#mNome').focus()});
+  $$('#crb [data-mdel]').forEach(b=>b.onclick=()=>{if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='Confirmar exclusão';setTimeout(()=>{if(b.isConnected){b.dataset.armed='';b.textContent='Excluir'}},4000);return}
+    const id=b.dataset.mdel;KV.set('mats',mats().filter(m=>m.id!==id));const pgm=mpg();delete pgm[id];KV.set('mpg',pgm);replanAll();rCrono()});
+  $$('#crb [data-mok]').forEach(b=>b.onclick=()=>{const m=matById(b.dataset.mok);const inp=$(`#crb [data-mupto="${m.id}"]`);const v=parseInt(inp.value,10);if(!v)return;const pgm=mpg();pgm[m.id]=rgAdd(rgDel(pgm[m.id],m.pi,m.pf),m.pi,Math.min(m.pf,Math.max(m.pi,v)));if(v<m.pi)delete pgm[m.id];KV.set('mpg',pgm);rCrono()});
+  // dias
+  $$('#days input[data-dt]').forEach(x=>x.onchange=()=>{markDay(P.byDt[x.dataset.dt],x.checked);RS={};rCrono();const el=document.getElementById('d-'+x.dataset.dt);el&&el.scrollIntoView({block:'center'})});
+  $$('#days input[data-rv]').forEach(x=>x.onchange=()=>{const k=eid?'done_'+eid:'done_all';const d=KV.get(k,{})||{};if(x.checked)d[x.dataset.rv]=1;else delete d[x.dataset.rv];KV.set(k,d);x.closest('.day').classList.toggle('done',x.checked)});
+  $('#goToday').onclick=()=>{const el=document.getElementById('d-'+tdy)||[...$$('#days .day')].find(d=>d.id.slice(2)>=tdy);el&&el.scrollIntoView({behavior:'smooth',block:'center'})};
+  if($('#goLate'))$('#goLate').onclick=()=>{const el=document.getElementById('d-'+late[0].x.dt);el&&el.scrollIntoView({behavior:'smooth',block:'center'})};
+  if($('#replan'))$('#replan').onclick=()=>{const b=$('#replan');if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='Confirmar: redistribuir o que falta a partir de hoje';return}replan(eid,null);rCrono()};
+  $('#ics').onclick=()=>{const t=P.days.map(x=>fmtD(x.dt)+'\t'+(x.exam?'PROVA '+x.exam.sigla:x.rev?'Revisão'+(single?'':' '+x.rev.sigla):itemsText(x))).join('\n');copyText(t,'#ics','Cronograma copiado')};
   bindLei($('#crb'));bindPrecDays($('#crb'));
 }
+
+/* ---- impressão do cronograma ---- */
+function prSched(P,eid){RS={};const pg=mpg();const tdy=iso(today());const dn=KV.get(eid?'done_'+eid:'done_all',{})||{};
+  const title=eid?`Cronograma de leitura — ${edById[eid].sigla}`:`Cronograma de leitura — todos os editais (${P.eds.map(e=>e.sigla).join(', ')})`;
+  const ordLbl={edital:'ordem do edital',tamanho:'menores primeiro',disc:'minha ordem de disciplinas',prazo:'pela data das provas',prazo_disc:'pela data das provas e pela minha ordem de disciplinas',uniforme:'carga uniforme'}[P.c.ordem]||P.c.ordem;
+  let h=prHead(title,`De ${fmtD(P.c.ini)} a ${fmtD(P.c.fim)} · ${P.study.length} dias de leitura · ${fmtN(P.ua)} artigos${P.up?' e '+fmtN(P.up)+' páginas de PDF':''} · média ${Math.ceil(P.perA)} art./dia${P.up?' e '+Math.ceil(P.perP)+' pág./dia':''} · ordem: ${ordLbl}`);
+  if(!eid)h+=`<div style="font-size:9pt;margin-bottom:4px"><b>Provas:</b> ${P.eds.map(e=>esc(e.sigla)+' em '+fmtD(e.data)).join(' · ')}</div>`;
+  if(ORD_USES_DISC(P.c.ordem))h+=`<div style="font-size:9pt;margin-bottom:4px"><b>Ordem das disciplinas:</b> ${discOrder().map((k,i)=>(i+1)+'. '+esc(k)).join(' · ')}</div>`;
+  const ms=Object.values(P.M);if(ms.length)h+=`<div style="font-size:9pt;margin-bottom:4px"><b>PDFs e materiais:</b> ${ms.map(x=>esc(x.m.nome)+' ('+esc(x.m.disc)+', p. '+x.m.pi+'–'+x.m.pf+')').join(' · ')}</div>`;
+  const sig=set=>!eid&&set?` <span class="muted">[${[...set].filter(id=>edById[id]).map(id=>edById[id].sigla).join(', ')}]</span>`:'';
+  h+=`<table><thead><tr><th style="width:22px">✓</th><th style="width:92px">Data</th><th>Lei seca</th><th style="width:30%">PDFs e materiais</th><th class="num" style="width:44px">Art.</th><th class="num" style="width:44px">Pág.</th></tr></thead><tbody>`;
+  P.days.forEach(x=>{const d=`${fmtD(x.dt)} <span class="muted">${WDN[parseISO(x.dt).getDay()]}</span>`;
+    if(x.exam){h+=`<tr class="ex"><td></td><td>${d}</td><td colspan="4"><b>PROVA ${esc(x.exam.sigla)}</b></td></tr>`;return}
+    if(x.rev){h+=`<tr><td>${prCk(dn[x.dt])}</td><td>${d}</td><td colspan="4"><b>Revisão${eid?' geral':' para '+esc(x.rev.sigla)}</b></td></tr>`;return}
+    const s=dayState(x,pg);const done=s.tot>0&&s.rd===s.tot;const late=x.dt<tdy&&!done&&s.tot>0;
+    h+=`<tr class="${late?'lt':''}"><td>${prCk(done)}</td><td>${d}${late?'<div style="font-size:7.5pt;font-weight:700">ATRASADO</div>':''}</td><td>${x.items.map(it=>esc((LEIS[it.k].sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:''))+sig(P.useBy[it.k])).join('; ')||'<span class="muted">—</span>'}</td><td>${x.pages.map(p=>{const m=matById(p.m);return esc((m?m.nome:'PDF')+' p. '+p.a+(p.a!==p.b?'–'+p.b:''))+sig(P.matBy[p.m])}).join('; ')||'<span class="muted">—</span>'}</td><td class="num">${x.n||''}</td><td class="num">${x.np||''}</td></tr>`});
+  return h+`</tbody></table>`}
+
 
 /* ================= EXPORTAÇÃO PARA PDF (A4 PAISAGEM) ================= */
 async function saveFile(name,data,mime){
@@ -1089,6 +1259,8 @@ const PR_CSS=`@page{size:A4 landscape;margin:11mm 12mm}
 #printroot tr{break-inside:avoid}
 #printroot .num{text-align:right;white-space:nowrap}
 #printroot .ck{font-size:11pt;line-height:1}
+#printroot tr.ex td{background:#e2e8f0}
+#printroot tr.lt td{background:#fff7ed}
 #printroot .bar{display:inline-block;width:70px;height:6px;border:1px solid #94a3b8;border-radius:4px;vertical-align:middle;margin-right:4px;position:relative;overflow:hidden}
 #printroot .bar i{position:absolute;left:0;top:0;bottom:0;background:#334155}
 #printroot .card{border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;margin:6px 0;break-inside:avoid}
@@ -1156,12 +1328,6 @@ function prAlt(eid){
   h+=`<table><thead><tr><th style="width:24%">Norma alteradora</th><th style="width:22%">Norma alterada</th><th>Dispositivos (A = alterado, I = incluído, R = revogado)</th></tr></thead><tbody>`;
   list.forEach(n=>n.alvos.forEach((a,j)=>{h+=`<tr>${j===0?`<td rowspan="${n.alvos.length}"><b>${esc(n.norma)}</b></td>`:''}<td>${esc(leiTitulo(a.k))}<div class="muted">${esc(leiRef(a.k))}</div></td><td>${a.itens.map(it=>esc(it.a+(it.d?' '+it.d:''))+` <span class="tag">${({V:'A',I:'I',R:'R'})[it.t]||esc(it.t||'')}</span>`).join('; ')}</td></tr>`}));
   return h+`</tbody></table>`}
-function prCrono(eid){
-  const e=edById[eid];const {plan}=buildPlan(eid);const dn=KV.get('done_'+eid,{})||{};
-  let h=prHead(`Cronograma — ${e.sigla}`,`${plan.length} dias · ${cronoProgress(eid)}% concluído`);
-  h+=`<table><thead><tr><th style="width:24px">✓</th><th style="width:90px">Data</th><th>Leitura do dia</th><th class="num" style="width:70px">Artigos</th></tr></thead><tbody>`;
-  plan.forEach(p=>{h+=`<tr><td>${prCk(dn[p.dt])}</td><td>${fmtD(p.dt)} <span class="muted">${WDN[parseISO(p.dt).getDay()]}</span></td><td>${p.rev?'<b>Revisão</b>':p.items.map(it=>esc((LEIS[it.k]?.sigla||leiTitulo(it.k))+' art. '+it.a+(it.a!==it.b?'–'+it.b:''))).join('; ')}</td><td class="num">${p.n||''}</td></tr>`});
-  return h+`</tbody></table>`}
 function prInc(src){
   const data=D.inc[src]||[];let h=prHead('Assuntos mais cobrados — '+(src==='JUIZ'?'Juiz (todas as bancas)':src),'Temas e subtemas por número de questões');
   data.forEach(d=>{const tot=d.t.reduce((s,t)=>s+t.c,0);h+=`<h2>${esc(d.d)} <span class="muted" style="font-size:9pt">${tot} questões</span></h2><table><thead><tr><th>Tema</th><th class="num">Questões</th><th>Subtemas (questões)</th></tr></thead><tbody>${d.t.slice().sort((a,b)=>b.c-a.c).map(t=>`<tr><td>${esc(t.n)}</td><td class="num">${t.c} <span class="muted">${esc(t.p||'')}</span></td><td>${t.s.slice().sort((a,b)=>b.c-a.c).map(s=>esc(s.n)+' ('+s.c+')').join('; ')}</td></tr>`).join('')}</tbody></table>`});
@@ -1184,7 +1350,8 @@ function openExport(){
     ['leisEd',`Catálogo de normas do edital ${e?e.sigla:''}`],
     ...(P?[['prec',`Precedentes da disciplina ${P.disc} organizados pelos pontos do ${e.sigla}`]]:[]),
     ['alt','Alterações legislativas 2023–2026 (normas do edital atual)'],
-    ['crono',`Cronograma de estudo do ${e?e.sigla:''}`],
+    ['crono',`Cronograma de leitura do ${e?e.sigla:''}`],
+    ['cronoAll','Cronograma de leitura de todos os editais juntos'],
     ['inc','Assuntos mais cobrados (FGV, FCC e Juiz)']];
   openDrawer(`<h2 style="font-family:Fraunces,Georgia,serif;font-size:22px">Exportar para PDF</h2>
    <div class="muted small" style="margin-bottom:10px">Gera uma versão para impressão em papel A4, orientação paisagem. Na janela de impressão, escolha "Salvar como PDF" (ou a impressora). Os quadrinhos ☑/☐ refletem as marcações de leitura e conclusão.</div>
@@ -1192,7 +1359,7 @@ function openExport(){
    <div class="toolbar" style="margin-top:10px"><button class="btn pri" id="exPrint">Imprimir / salvar PDF</button><button class="btn" id="exHtml">Baixar versão para impressão (.html)</button></div><div class="small muted" id="exMsg"></div>
    <div class="muted small" style="margin-top:8px">Se a janela de impressão não abrir (alguns visualizadores bloqueiam), use "Baixar versão para impressão": abra o arquivo baixado no navegador e ele abrirá a impressão em A4 paisagem.</div>`,el=>{
     const build=()=>{const k=$('input[name=exo]:checked',el).value;
-      const m={painel:()=>[prPainel(),'Radar - Painel'],edital:()=>[prEdital(e),'Radar - Edital '+e.sigla],disc:()=>[prEdital(e,di),'Radar - '+e.sigla+' - '+d.d],leis:()=>[prLeis(),'Radar - Normas'],leisEd:()=>[prLeis(e.id),'Radar - Normas '+e.sigla],prec:()=>[prPrec(e,d,P),'Radar - Precedentes '+P.disc+' '+e.sigla],alt:()=>[prAlt(e.id),'Radar - Alteracoes '+e.sigla],crono:()=>[prCrono(e.id),'Radar - Cronograma '+e.sigla],inc:()=>[['FGV','FCC','JUIZ'].map(prInc).join('<div class="pb"></div>'),'Radar - Mais cobrados']};
+      const m={painel:()=>[prPainel(),'Radar - Painel'],edital:()=>[prEdital(e),'Radar - Edital '+e.sigla],disc:()=>[prEdital(e,di),'Radar - '+e.sigla+' - '+d.d],leis:()=>[prLeis(),'Radar - Normas'],leisEd:()=>[prLeis(e.id),'Radar - Normas '+e.sigla],prec:()=>[prPrec(e,d,P),'Radar - Precedentes '+P.disc+' '+e.sigla],alt:()=>[prAlt(e.id),'Radar - Alteracoes '+e.sigla],crono:()=>[prSched(sched(e.id),e.id),'Radar - Cronograma '+e.sigla],cronoAll:()=>[prSched(sched(null),null),'Radar - Cronograma de todos os editais'],inc:()=>[['FGV','FCC','JUIZ'].map(prInc).join('<div class="pb"></div>'),'Radar - Mais cobrados']};
       return m[k]()};
     $('#exPrint',el).onclick=()=>{const [h,t]=build();$('#exMsg',el).textContent='Abrindo a impressão…';setTimeout(()=>{if(!doPrint(h,t))$('#exMsg',el).textContent='A impressão foi bloqueada aqui. Use "Baixar versão para impressão".';else $('#exMsg',el).textContent=''},50)};
     $('#exHtml',el).onclick=async()=>{const [h,t]=build();try{await saveFile(t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\- ]+/g,'').replace(/\s+/g,'-').replace(/-+/g,'-')+'.html',standaloneHTML(h,t),'text/html;charset=utf-8');$('#exMsg',el).textContent='Arquivo gerado.'}catch(err){$('#exMsg',el).textContent='Download não concluído.'}};
